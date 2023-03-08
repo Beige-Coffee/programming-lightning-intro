@@ -1,0 +1,2 @@
+auth="bitcoind:bitcoind"
+network="regtest"

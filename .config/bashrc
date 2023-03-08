@@ -1,0 +1,19 @@
+# create an alias to use bitcoin-cli without having to provide the network or rpc authentication information
+alias bcli='bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind'
+
+# an alias for getting a new address from core
+alias newaddress='bcli getnewaddress "" "bech32"'
+
+# usage: mine x
+# where x is the number of blocks to mine
+# useful when opening channels and you need to get the funding tx confirmed
+function mine() {
+  bcli generatetoaddress $1 $(newaddress)
+}
+
+# usage: fund x
+# where x is the bitcoin address to fund
+# this sends 1 bitcoin to the address
+function fund() {
+  bcli sendtoaddress "$1" 1
+}

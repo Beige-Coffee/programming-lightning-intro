@@ -1,0 +1,16 @@
+[package]
+name = "pl-00-intro"
+version = "0.1.0"
+authors = ["runner"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitcoin = "0.29.2"
+
+[build-dependencies]
+syn = { version = "1.0.107", features = ["parsing", "full","extra-traits"] }
+
+[lib]
+doctest = false
