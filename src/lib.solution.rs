@@ -3,8 +3,7 @@ pub mod internal;
 
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::blockdata::script::Script;
-use bitcoin::secp256k1::ecdsa::Signature;
-use bitcoin::{PublicKey, Block, OutPoint};
+use bitcoin::PublicKey;
 use internal::builder::Builder;
 
 fn p2pkh(pubkey: &PublicKey) -> Script {
@@ -68,41 +67,29 @@ fn payment_channel_funding_output(
 }
 
 fn block_connected(funding_output: Script, channel_amount_sats: u64, block: Block) -> bool {
-    for tx in block.txdata {
-        for output in tx.output {
-            if output.script_pubkey == funding_output && output.value == channel_amount_sats {
-                return true;
-            }
-        }
-    }
-    false
+  for tx in block.txdata {
+      for output in tx.output {
+          if output.script_pubkey == funding_output && output.value == channel_amount_sats {
+              return true;
+          }
+      }
+  }
+  false
 }
 
 fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> Script {
-    Builder::new()
-        .push_signature(alice_signature)
-        .push_signature(bob_signature)
-        .push_int(0)
-    .into_script()
+  Builder::new()
+      .push_int(0)
+      .push_signature(alice_signature)
+      .push_signature(bob_signature)
+  .into_script()
 }
 
-fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> Script {
-    Builder::new()
-        .push_signature(alice_signature)
-        .push_key(alice_pubkey)
-        .push_int(1)
-    .into_script()
-}
-
-fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
-    for tx in block.txdata {
-        for input in tx.input {
-            if input.previous_output == funding_outpoint {
-                return true;
-            }
-        }
-    }
-    false
+fn spend_refund(alice_signature: Signature) -> Script {
+  Builder::new()
+      .push_int(1)
+      .push_signature(alice_signature)
+  .into_script()
 }
 
 #[cfg(test)]

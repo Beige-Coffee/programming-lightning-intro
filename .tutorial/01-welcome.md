@@ -8,7 +8,7 @@ We assume you have read or already understand the information contained in Maste
 <br/><br/>
 # Replit
 
-Programming Lightning is split into many sections where each section can be accessed in it's own replit.  The replit will have a starter project ready to go and a tutorial to guide you through the programming exercises.  We recommend using a 3-pane setup with the tutorial, code, and a console open at all times.
+Programming Lightning is built to be completed on replit.com. The replit will have a starter project ready to go and a tutorial to guide you through the programming exercises.  We recommend using a 2-pane setup with the tutorial and code side-by-side.
 <br/><br/>
 # Rust
 
@@ -16,7 +16,7 @@ This workshop relies heavily on the Rust programming language and ecosystem.  We
 
 We do not assume *any* prior knowledge of Rust and aim to have it not get in the way of the overall experience.  
 <br/><br/>
-# Using the Workshop (Emojis)
+# Using the Workshop (Self-Paced)
 
 Along the way you might come across emojis that signify something important.  Here's a quick overview of what you might see and what they mean:
 <br/><br/><br/>
@@ -24,13 +24,5 @@ Along the way you might come across emojis that signify something important.  He
 ```
 // some command or code will be here, with a copy button on the right
 ```
-<br/><br/>
-🦀 The red crab emoji shares optional tips that help explain Rust concepts we might run into along our journey.
-<details>
-  <summary>🦀 Tip</summary>
-  These sections will share tips to help you understand some rust syntax you might run into during this workshop.
-</details>
-
-<br/><br/>
-⚡️⚡️⚡️ You'll see three lightning bolts when it's time to start a programming exercise
+⚡️ You'll see a lightning bolt when it's time to start a programming exercise
 <br/><br/><br/><br/>

@@ -1,6 +1,6 @@
 #  Environment Setup
 
-For most of the exercises we will need bitcoind and an electrum server running.  The binaries, configurations, and some helpful aliases are all available as part of the replit environment. 
+For some of the exercises we will need bitcoind and an electrum server running.  The binaries, configurations, and some helpful aliases are all available as part of the replit environment. 
 
 👉 Run this in your console to get your environment set up:
 ```
