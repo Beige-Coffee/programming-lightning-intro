@@ -1,3 +1,5 @@
+use crate::internal::bitcoind_client::BitcoindClient;
+use crate::internal::channel_manager::ChannelManager;
 use crate::{
     cltv_p2pkh, 
     csv_p2pkh, 
@@ -7,12 +9,54 @@ use crate::{
     block_connected,
     spend_multisig,
     spend_refund,
-    channel_closed
+    channel_closed,
+    handle_funding_generation_ready
 };
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::{PublicKey, Script, Transaction, PackedLockTime, OutPoint, TxIn, Witness, Sequence};
+
+#[test]
+fn test_handle_funding_generation_ready() {
+    let bitcoind_client = BitcoindClient::new();
+    let channel_manager = ChannelManager::new();
+    let temporary_channel_id: [u8; 32] = [3; 32];
+    let counterparty_node_id = pubkey_from_private_key(&[0x01; 32]);
+    let channel_value_satoshis = 1000000;
+    let output_script = Script::new();
+    let user_channel_id = 0;
+    
+    let result = std::panic::catch_unwind(|| {
+
+        handle_funding_generation_ready(
+            &channel_manager, 
+            &bitcoind_client, 
+            &temporary_channel_id, 
+            &counterparty_node_id, 
+            channel_value_satoshis, 
+            output_script, 
+            user_channel_id
+        )
+    });
+
+    match result {
+        Ok(_) => {
+            let last_funding_tx_gen = channel_manager.last_funding_tx_gen.lock().unwrap();
+            assert!(last_funding_tx_gen.is_some());
+
+            let (temp_cid, node_id, tx_hex) = last_funding_tx_gen.clone().unwrap();
+            assert_eq!(temp_cid, temporary_channel_id);
+            assert_eq!(node_id, counterparty_node_id);
+            assert_eq!(tx_hex, "signedtxhex".to_string());
+        },
+        Err(e) => {
+            if let Ok(string) = e.downcast::<String>() {
+                println!("{}", string);
+            }
+        },
+    }
+}
 
 #[test]
 fn test_channel_closed() {

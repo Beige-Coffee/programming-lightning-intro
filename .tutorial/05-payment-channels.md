@@ -1,6 +1,5 @@
 # Payment Channels
 
-
 You can conceptually think of a payment channel as a way to perform batching of your payments over a potentially unlimited length of time.  This makes it a more viable option for consumers who have sporadic payment requirements and on-chain batching is not a useful solution.
 
 Simple payment channels are a way for two parties to make potentially unlimited number of payments between them with only ever needing to make two on-chain bitcoin transactions.  Not only does this drastically reduce the cost to the payer and the imputed cost to the network but payments over a payment channel are settled nearly instantly in most cases.

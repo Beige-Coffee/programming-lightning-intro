@@ -1,10 +1,13 @@
-#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 pub mod internal;
 
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::blockdata::script::Script;
-use bitcoin::PublicKey;
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::{PublicKey, Block, OutPoint, TxOut, Transaction};
+use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
+use internal::channel_manager::ChannelManager;
 
 fn p2pkh(pubkey: &PublicKey) -> Script {
     Builder::new()
@@ -67,30 +70,63 @@ fn payment_channel_funding_output(
 }
 
 fn block_connected(funding_output: Script, channel_amount_sats: u64, block: Block) -> bool {
-  for tx in block.txdata {
-      for output in tx.output {
-          if output.script_pubkey == funding_output && output.value == channel_amount_sats {
-              return true;
-          }
-      }
-  }
-  false
+    for tx in block.txdata {
+        for output in tx.output {
+            if output.script_pubkey == funding_output && output.value == channel_amount_sats {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> Script {
-  Builder::new()
-      .push_int(0)
-      .push_signature(alice_signature)
-      .push_signature(bob_signature)
-  .into_script()
+    Builder::new()
+        .push_signature(alice_signature)
+        .push_signature(bob_signature)
+        .push_int(0)
+    .into_script()
 }
 
-fn spend_refund(alice_signature: Signature) -> Script {
-  Builder::new()
-      .push_int(1)
-      .push_signature(alice_signature)
-  .into_script()
+fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> Script {
+    Builder::new()
+        .push_signature(alice_signature)
+        .push_key(alice_pubkey)
+        .push_int(1)
+    .into_script()
 }
+
+fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
+    for tx in block.txdata {
+        for input in tx.input {
+            if input.previous_output == funding_outpoint {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn handle_funding_generation_ready(
+    channel_manager: &ChannelManager, 
+    bitcoind_client: &BitcoindClient, 
+    temporary_channel_id: &[u8; 32], 
+    counterparty_node_id: &PublicKey, 
+    channel_value_satoshis: u64, 
+    output_script: Script, 
+    user_channel_id: u128) {
+
+        let raw_tx = bitcoind_client.create_raw_transaction(vec![TxOut {
+            value: channel_value_satoshis,
+            script_pubkey: output_script,
+        }]);
+
+        let funded_tx = bitcoind_client.fund_raw_transaction(raw_tx);
+
+        let signed_tx = bitcoind_client.sign_raw_transaction_with_wallet(funded_tx);
+
+        channel_manager.funding_transaction_generated(temporary_channel_id, counterparty_node_id, signed_tx);
+    }
 
 #[cfg(test)]
 mod test;

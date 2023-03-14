@@ -1,5 +1,4 @@
-
-## Multisig Channel Problems
+# Multisig Channel Problems
 
 Obviously there are some problems with using a bare 2-of-2 multisig as a payment channel otherwise we would not need more complicated constructions!
 
