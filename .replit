@@ -1,0 +1,24 @@
+run = "cargo test"
+hidden = ["target", ".tutorial", "db", "start.sh", "bitcoin.conf", "electrs.toml", ".config", "build.rs"]
+entrypoint = "src/lib.rs"
+onBoot = ["bash", "start.sh"]
+
+[packager]
+language = "rust"
+
+[packager.features]
+packageSearch = true
+
+[nix]
+channel = "stable-22_11"
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix"]
+
+[languages]
+
+[languages.rust]
+pattern = "**/*.rs"
+
+[languages.rust.languageServer]
+start = "rust-analyzer"
