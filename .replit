@@ -1,5 +1,5 @@
 run = "cargo test"
-hidden = ["target", ".tutorial", "db", "start.sh", "bitcoin.conf", "electrs.toml", ".config", "build.rs"]
+hidden = ["target", ".tutorial", "db", "start.sh", "bitcoin.conf", "electrs.toml", ".config", "build.rs", "src/lib.solution.rs", "src/internal", "src/test.rs", ".gitignore", "Cargo.toml", "Cargo.lock"]
 entrypoint = "src/lib.rs"
 onBoot = ["bash", "start.sh"]
 
@@ -22,3 +22,11 @@ pattern = "**/*.rs"
 
 [languages.rust.languageServer]
 start = "rust-analyzer"
+
+[[ports]]
+localPort = 18443
+externalPort = 80
+
+[[ports]]
+localPort = 18444
+externalPort = 3000

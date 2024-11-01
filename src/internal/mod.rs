@@ -1,4 +1,4 @@
-pub mod builder;
 pub mod bitcoind_client;
-pub mod convert;
+pub mod builder;
 pub mod channel_manager;
+pub mod helper;
