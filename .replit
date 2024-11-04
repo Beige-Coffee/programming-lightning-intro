@@ -1,5 +1,20 @@
-run = "cargo test"
-hidden = ["target", ".tutorial", "db", "start.sh", "bitcoin.conf", "electrs.toml", ".config", "build.rs", "src/lib.solution.rs", "src/internal", "src/test.rs", ".gitignore", "Cargo.toml", "Cargo.lock"]
+run = "cargo test -- --nocapture"
+hidden = [
+  "target",
+  ".tutorial",
+  "db",
+  "start.sh",
+  "bitcoin.conf",
+  "electrs.toml",
+  ".config",
+  "build.rs",
+  "src/lib.solution.rs",
+  "src/internal",
+  "src/test.rs",
+  ".gitignore",
+  "Cargo.toml",
+  "Cargo.lock",
+]
 entrypoint = "src/lib.rs"
 onBoot = ["bash", "start.sh"]
 

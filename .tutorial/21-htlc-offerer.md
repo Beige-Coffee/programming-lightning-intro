@@ -49,3 +49,29 @@ For the HTLC Timeout:
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/HTLCOffererTx.png" alt="HTLCOffererTx" width="100%" height="auto">
 </p>
+
+## ⚡️ Write Function `build_htlc_offerer_witness_script` To Generate An HTLC Offerer Output Script
+
+`build_htlc_offerer_witness_script` will take the following arguments:
+- `revocation_pubkey160`: This is the HASH160 of the revocation public key. As a reminder, the HASH160 is calculated by first applying SHA256 to a public key and then applying RIPEMD160 to the result. This is represented as the `PubkeyHash` data type in Rust Bitcoin.
+- `remote_htlc_pubkey`: This is the HTLC public key of our remote counterparty.
+- `local_htlc_pubkey`: This is our HTLC public key.
+- `payment_hash160`: This is the RIPEMD160 of the payment hash. Since the result of this is 20 bytes, it is represented as `&[u8; 20]`, a 20-byte array in Rust.
+
+Below are a few```Builder``` functions that will use useful in this excercise.
+<br/><br/>
+* `Builder::new()` - construct a new builder object
+* `.push_opcode(op)` - add an opcode to the script
+* `.push_int(num)` - add a number to the script
+* `.push_key(public_key)` - add a `PublicKey` to the script
+* `.push_slice(public_key)` - add bytes, such as a `PubkeyHash` or array of bytes, to the script.
+* `.into_script()` - return the resulting `Script` from the `Builder`  
+
+```rust
+fn build_htlc_offerer_witness_script(
+    revocation_pubkey160: &PubkeyHash,
+    remote_htlc_pubkey: &PublicKey,
+    local_htlc_pubkey: &PublicKey,
+    payment_hash160: &[u8; 20],
+) -> ScriptBuf
+```

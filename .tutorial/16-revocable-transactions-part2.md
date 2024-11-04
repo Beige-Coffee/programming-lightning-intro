@@ -34,6 +34,7 @@ Finally, each transaction will have a ```to_remote``` output that sends our chan
 
 `to_local` will take a revocation public key, to_local delayed public key, and to_self_delay number of blocks  as an input. It will return the output script we need to use.
 
+
 ```rust
 fn to_local(revocation_key: &PublicKey, to_local_delayed_pubkey: &PublicKey, to_self_delay: &i64) -> Script {
 }

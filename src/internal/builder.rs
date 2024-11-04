@@ -2,6 +2,7 @@ use bitcoin::script::{Builder as BitcoinBuilder, ScriptBuf, ScriptHash};
 use bitcoin::opcodes;
 use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::PublicKey;
+use bitcoin::script::PushBytes;
 
 pub struct Builder {
     inner: BitcoinBuilder,
@@ -31,10 +32,10 @@ impl Builder {
         self
     }
 
-    //pub fn push_bytes(mut self, bytes: &[u8]) -> Self {
-    //    self.inner = self.inner.push_slice(bytes);
-    //    self
-    //}
+    pub fn push_slice<T: AsRef<PushBytes>>(mut self, data: T) -> Self {
+        self.inner = self.inner.push_slice(data);
+        self
+    }
 
     pub fn push_script_hash(mut self, script_hash: &ScriptHash) -> Self {
       self.inner = self.inner.push_slice(&script_hash);

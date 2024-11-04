@@ -1,22 +1,21 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 pub mod internal;
 
+use bitcoin::amount::Amount;
 use bitcoin::blockdata::opcodes::all as opcodes;
-use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::hashes::ripemd160::Hash as Ripemd160;
+use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1;
+use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::script::{ScriptBuf, ScriptHash};
-use bitcoin::amount::Amount;
+use bitcoin::PubkeyHash;
 use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxOut};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
-use internal::helper::{
-    pubkey_multiplication_tweak,
-    sha256_hash,
-};
+use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
 
 fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
     Builder::new()
@@ -38,16 +37,19 @@ fn p2sh(script_hash: &ScriptHash) -> ScriptBuf {
 
 fn two_of_two_multisig(alice_pubkey: &PublicKey, bob_pubkey: &PublicKey) -> ScriptBuf {
     Builder::new()
-    .push_int(2)
-    .push_key(alice_pubkey)
-    .push_key(bob_pubkey)
-    .push_int(2)
-    .push_opcode(opcodes::OP_CHECKMULTISIG)
-    .into_script()
+        .push_int(2)
+        .push_key(alice_pubkey)
+        .push_key(bob_pubkey)
+        .push_int(2)
+        .push_opcode(opcodes::OP_CHECKMULTISIG)
+        .into_script()
 }
 
-fn two_of_three_multisig_redeem_script(pubkey: &PublicKey, pubkey2: &PublicKey,
-                                       pubkey3: &PublicKey) -> ScriptBuf {
+fn two_of_three_multisig_redeem_script(
+    pubkey: &PublicKey,
+    pubkey2: &PublicKey,
+    pubkey3: &PublicKey,
+) -> ScriptBuf {
     Builder::new()
         .push_int(2)
         .push_key(pubkey)
@@ -55,7 +57,7 @@ fn two_of_three_multisig_redeem_script(pubkey: &PublicKey, pubkey2: &PublicKey,
         .push_key(pubkey3)
         .push_int(3)
         .push_opcode(opcodes::OP_CHECKMULTISIG)
-    .into_script()
+        .into_script()
 }
 
 fn cltv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
@@ -115,7 +117,7 @@ fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> Scrip
         .push_signature(alice_signature)
         .push_signature(bob_signature)
         .push_int(0)
-    .into_script()
+        .into_script()
 }
 
 fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> ScriptBuf {
@@ -123,26 +125,104 @@ fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> ScriptB
         .push_signature(alice_signature)
         .push_key(alice_pubkey)
         .push_int(1)
-    .into_script()
+        .into_script()
 }
 
-pub fn generate_revocation_pubkey(countersignatory_basepoint: Secp256k1PublicKey,
-    per_commitment_point: Secp256k1PublicKey) -> Secp256k1PublicKey {
+pub fn generate_revocation_pubkey(
+    countersignatory_basepoint: Secp256k1PublicKey,
+    per_commitment_point: Secp256k1PublicKey,
+) -> Secp256k1PublicKey {
+    let rev_append_commit_hash_key =
+        sha256_hash(&countersignatory_basepoint, &per_commitment_point);
 
-    let rev_append_commit_hash_key = sha256_hash(&countersignatory_basepoint,&per_commitment_point);
+    let commit_append_rev_hash_key =
+        sha256_hash(&per_commitment_point, &countersignatory_basepoint);
 
-    let commit_append_rev_hash_key = sha256_hash(&per_commitment_point, &countersignatory_basepoint);
+    let countersignatory_contrib =
+        pubkey_multiplication_tweak(countersignatory_basepoint, rev_append_commit_hash_key);
 
-    let countersignatory_contrib = pubkey_multiplication_tweak(countersignatory_basepoint, rev_append_commit_hash_key);
-
-    let broadcaster_contrib = pubkey_multiplication_tweak(per_commitment_point, commit_append_rev_hash_key);
+    let broadcaster_contrib =
+        pubkey_multiplication_tweak(per_commitment_point, commit_append_rev_hash_key);
 
     let pk = countersignatory_contrib.combine(&broadcaster_contrib)
         .expect("Addition only fails if the tweak is the inverse of the key. This is not possible when the tweak commits to the key.");
 
     pk
+}
 
-    }
+fn build_htlc_offerer_witness_script(
+    revocation_pubkey160: &PubkeyHash,
+    remote_htlc_pubkey: &PublicKey,
+    local_htlc_pubkey: &PublicKey,
+    payment_hash160: &[u8; 20],
+) -> ScriptBuf {
+    Builder::new()
+        .push_opcode(opcodes::OP_DUP)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_slice(revocation_pubkey160)
+        .push_opcode(opcodes::OP_EQUAL)
+        .push_opcode(opcodes::OP_IF)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .push_opcode(opcodes::OP_ELSE)
+        .push_key(&remote_htlc_pubkey)
+        .push_opcode(opcodes::OP_SWAP)
+        .push_opcode(opcodes::OP_SIZE)
+        .push_int(32)
+        .push_opcode(opcodes::OP_EQUAL)
+        .push_opcode(opcodes::OP_NOTIF)
+        .push_opcode(opcodes::OP_DROP)
+        .push_int(2)
+        .push_opcode(opcodes::OP_SWAP)
+        .push_key(&local_htlc_pubkey)
+        .push_int(2)
+        .push_opcode(opcodes::OP_CHECKMULTISIG)
+        .push_opcode(opcodes::OP_ELSE)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_slice(payment_hash160)
+        .push_opcode(opcodes::OP_EQUALVERIFY)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .push_opcode(opcodes::OP_ENDIF)
+        .into_script()
+}
+
+fn build_htlc_receiver_witness_script(
+    revocation_pubkey160: &PubkeyHash,
+    remote_htlc_pubkey: &PublicKey,
+    local_htlc_pubkey: &PublicKey,
+    payment_hash160: &[u8; 20],
+    cltv_expiry: i64,
+) -> ScriptBuf {
+    Builder::new()
+        .push_opcode(opcodes::OP_DUP)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_slice(&revocation_pubkey160)
+        .push_opcode(opcodes::OP_EQUAL)
+        .push_opcode(opcodes::OP_IF)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .push_opcode(opcodes::OP_ELSE)
+        .push_key(&remote_htlc_pubkey)
+        .push_opcode(opcodes::OP_SWAP)
+        .push_opcode(opcodes::OP_SIZE)
+        .push_int(32)
+        .push_opcode(opcodes::OP_EQUAL)
+        .push_opcode(opcodes::OP_IF)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_slice(&payment_hash160)
+        .push_opcode(opcodes::OP_EQUALVERIFY)
+        .push_int(2)
+        .push_opcode(opcodes::OP_SWAP)
+        .push_key(&local_htlc_pubkey)
+        .push_int(2)
+        .push_opcode(opcodes::OP_CHECKMULTISIG)
+        .push_opcode(opcodes::OP_ELSE)
+        .push_opcode(opcodes::OP_DROP)
+        .push_int(cltv_expiry)
+        .push_opcode(opcodes::OP_CLTV)
+        .push_opcode(opcodes::OP_DROP)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .push_opcode(opcodes::OP_ENDIF)
+        .into_script()
+}
 
 fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
     for tx in block.txdata {
@@ -160,10 +240,24 @@ fn handle_funding_generation_ready(
     bitcoind_client: &BitcoindClient,
     temporary_channel_id: &[u8; 32],
     counterparty_node_id: &PublicKey,
-    channel_value_satoshis: u64,
+    channel_value_satoshis: Amount,
     output_script: ScriptBuf,
     user_channel_id: u128,
 ) {
+    let raw_tx = bitcoind_client.create_raw_transaction(vec![TxOut {
+        value: channel_value_satoshis,
+        script_pubkey: output_script,
+    }]);
+
+    let funded_tx = bitcoind_client.fund_raw_transaction(raw_tx);
+
+    let signed_tx = bitcoind_client.sign_raw_transaction_with_wallet(funded_tx);
+
+    channel_manager.funding_transaction_generated(
+        temporary_channel_id,
+        counterparty_node_id,
+        signed_tx,
+    );
 }
 
 #[cfg(test)]

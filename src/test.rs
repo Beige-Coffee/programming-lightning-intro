@@ -1,30 +1,31 @@
 use crate::internal::bitcoind_client::BitcoindClient;
 use crate::internal::channel_manager::ChannelManager;
 use crate::{
-    block_connected, channel_closed, cltv_p2pkh, csv_p2pkh, handle_funding_generation_ready, p2pkh,
-    payment_channel_funding_output, spend_multisig, spend_refund, two_of_two_multisig, two_of_three_multisig_redeem_script, p2sh,generate_revocation_pubkey
+    block_connected, build_htlc_offerer_witness_script, build_htlc_receiver_witness_script,
+    channel_closed, cltv_p2pkh, csv_p2pkh, generate_revocation_pubkey,
+    handle_funding_generation_ready, p2pkh, p2sh, payment_channel_funding_output, spend_multisig,
+    spend_refund, two_of_three_multisig_redeem_script, two_of_two_multisig,
 };
+
+use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash};
 use bitcoin::amount::Amount;
-use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::hex::FromHex;
-use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
-use bitcoin::secp256k1::Scalar;
+use bitcoin::hashes::Hash;
 use bitcoin::locktime::absolute::LockTime;
 use bitcoin::script::{ScriptBuf, ScriptHash};
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
+use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::transaction::Version;
-use bitcoin::hashes::Hash;
+use bitcoin::PubkeyHash;
 use bitcoin::{OutPoint, PublicKey, Sequence, Transaction, TxIn, Witness};
-use crate::internal::helper::{
-    pubkey_multiplication_tweak,
-    sha256_hash,
-};
 
 /// hash160 of the empty string
 const HASH160_DUMMY: [u8; 20] = [
-    0xb4, 0x72, 0xa2, 0x66, 0xd0, 0xbd, 0x89, 0xc1, 0x37, 0x06,
-    0xa4, 0x13, 0x2c, 0xcf, 0xb1, 0x6f, 0x7c, 0x3b, 0x9f, 0xcb,
+    0xb4, 0x72, 0xa2, 0x66, 0xd0, 0xbd, 0x89, 0xc1, 0x37, 0x06, 0xa4, 0x13, 0x2c, 0xcf, 0xb1, 0x6f,
+    0x7c, 0x3b, 0x9f, 0xcb,
 ];
 
 #[test]
@@ -33,7 +34,7 @@ fn test_handle_funding_generation_ready() {
     let channel_manager = ChannelManager::new();
     let temporary_channel_id: [u8; 32] = [3; 32];
     let counterparty_node_id = pubkey_from_private_key(&[0x01; 32]);
-    let channel_value_satoshis = 1000000;
+    let channel_value_satoshis = Amount::from_sat(1000000);
     let output_script = ScriptBuf::new();
     let user_channel_id = 0;
 
@@ -361,9 +362,9 @@ fn test_two_of_three_multisig_redeem_script() {
     let pubkey1 = pubkey_from_private_key(&[0x01; 32]);
     let pubkey2 = pubkey_from_private_key(&[0x02; 32]);
     let pubkey3 = pubkey_from_private_key(&[0x03; 32]);
-    let result = std::panic::catch_unwind(|| two_of_three_multisig_redeem_script(&pubkey1,
-                                                                                 &pubkey2,
-                                                                                 &pubkey3));
+    let result = std::panic::catch_unwind(|| {
+        two_of_three_multisig_redeem_script(&pubkey1, &pubkey2, &pubkey3)
+    });
 
     match result {
         Ok(script) => {
@@ -371,7 +372,7 @@ fn test_two_of_three_multisig_redeem_script() {
             let acceptable_solutions = [
                 "ae79902ae33900b679c76ced8576362e4abb15e8".to_string(), //123
                 "1dd8aaf8dacff4b11fe1d0ee75ca4a5a6c5922d5".to_string(), //132
-                 "9d1bb190ab3cab8cb38645be2c7d34aee2200792".to_string(), //231
+                "9d1bb190ab3cab8cb38645be2c7d34aee2200792".to_string(), //231
                 "25e33caeb2c30b28710ee5e63ca04f88ad47a6d7".to_string(), //213
                 "521dc8bd33010dce2dc2498bf2d443c2f4568864".to_string(), //321
                 "303bc7ac756ba94a75bf2e211a5575f203f27d0c".to_string(), //312
@@ -428,18 +429,91 @@ fn test_p2sh() {
 }
 
 #[test]
-fn test_generate_revocation_pubkey() {
+fn test_build_htlc_offerer_witness_script() {
+    let remote_htlc_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let local_htlc_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let revocation_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+    let payment_hash160 = HASH160_DUMMY;
+    let revocation_hash160 = PubkeyHash::hash(&revocation_key.serialize());
+    let cltv_expiry: i64 = 1000000000;
 
+    let result = std::panic::catch_unwind(|| {
+        build_htlc_receiver_witness_script(
+            &revocation_hash160,
+            &remote_htlc_pubkey,
+            &local_htlc_pubkey,
+            &payment_hash160,
+            cltv_expiry,
+        )
+    });
+
+    match result {
+        Ok(script) => {
+            let their_solution = format!("{}", script.script_hash());
+            let acceptable_solutions = [
+                "db3d8b6f8b95e2bc994dd29941b2431dd9c1d75e".to_string(), //123
+            ];
+
+            assert!(acceptable_solutions.contains(&their_solution))
+        }
+        Err(e) => {
+            if let Ok(string) = e.downcast::<String>() {
+                println!("{}", string);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_build_htlc_receiver_witness_script() {
+    let remote_htlc_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let local_htlc_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let revocation_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+    let payment_hash160 = HASH160_DUMMY;
+    let revocation_hash160 = PubkeyHash::hash(&revocation_key.serialize());
+
+    let result = std::panic::catch_unwind(|| {
+        build_htlc_offerer_witness_script(
+            &revocation_hash160,
+            &remote_htlc_pubkey,
+            &local_htlc_pubkey,
+            &payment_hash160,
+        )
+    });
+
+    match result {
+        Ok(script) => {
+            let their_solution = format!("{}", script.script_hash());
+            let acceptable_solutions = [
+                "0c758acc3320bc585d3cf5ef0416f28430d2398e".to_string(), //123
+            ];
+
+            assert!(acceptable_solutions.contains(&their_solution))
+        }
+        Err(e) => {
+            if let Ok(string) = e.downcast::<String>() {
+                println!("{}", string);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_generate_revocation_pubkey() {
     let countersignatory_basepoint = secp256k1_pubkey_from_private_key(&[0x01; 32]);
     let per_commitment_point = secp256k1_pubkey_from_private_key(&[0x02; 32]);
 
-    let revocation_pubkey = generate_revocation_pubkey(countersignatory_basepoint, per_commitment_point);
+    let revocation_pubkey =
+        generate_revocation_pubkey(countersignatory_basepoint, per_commitment_point);
 
     let actual = revocation_pubkey.to_string();
 
     let expected = "02f406b2b2ef2372c08d003e5062e4b34929b86f107a36bfbd406f5644419e9ff6";
 
-    assert_eq!(actual, expected, "Revocation pubkey doesn't match expected value");
+    assert_eq!(
+        actual, expected,
+        "Revocation pubkey doesn't match expected value"
+    );
 }
 
 pub fn secp256k1_pubkey_from_private_key(private_key: &[u8; 32]) -> Secp256k1PublicKey {

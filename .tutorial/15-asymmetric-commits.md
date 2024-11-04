@@ -25,6 +25,7 @@ fn generate_revocation_pubkey(countersignatory_basepoint: &PublicKey, per_commit
 }
 ```
 
+# {!!!Direct user to BOLT to find equation. Provide equation for them as hint!!!}
 This will get a little mathy, but don't worry! We'll step through it together. Below is the general equation for calculating a revocation public key.
 
 First, let's define the following terms:
