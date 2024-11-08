@@ -9,15 +9,34 @@ One approach would be to use multiple spending paths and timelocks to ensure tha
   <summary>Answer</summary>
   <br/>
 
-There are multiple ways to carry out this approach, but below is one example. In this example, we create multiple spending paths. The first spending path checks to see if both Aice's and Bob's signature are provided. If so, that is sufficient to satisfy the conditions on this output and spend the funds. If not, we can check if a relative timelock has passed since this transaction was confirmed on chain. For example, we could add a condition that says, if 2016 blocks (~2 weeks) have passed since the funding transaction was confirmed, then Alice can spend this output to herself. This would act as Alice "refunding" her channel balance.
+In this example, we create multiple spending paths. The first spending path checks to see if both Aice's and Bob's signature are provided. If so, that is sufficient to satisfy the conditions on this output and spend the funds. If not, we can check if a relative timelock has passed since this transaction was confirmed on chain. For example, we could add a condition that says, if 2016 blocks (~2 weeks) have passed since the funding transaction was confirmed, then Alice can spend this output to herself. This would act as Alice "refunding" her channel balance.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/TimelockMultisig.png" alt="TimelockMultisig" width="100%" height="auto">
 </p>
 
-While a valid approach to ensuring Alice can get her funds out of the 2-of-2 funding transaction, this approach introduces many undesirable properties and issues itself. Below are a few.
-- Alice must specify the relative timelock that needs to pass before she can claim her refund. This effectively puts a timeline on the channel such that her refund can only be claimed after that time passes. So, if Bob stops responding immediately, Alice still has to wait the pre-specifified time to retrieve her funds.
-- This also complicates the payment channel protocol, as, once the timelock has passed, Alice has the ability to claim the entire output on this transaction. If Bob has made any payments to Alice since this funding transaction has been broadcasted, he will need to close the channel before this timelock is reached. Otherwise, Alice will be able to steal all of the funds.
+While a valid approach to ensuring Alice can get her funds out of the 2-of-2 funding transaction, this approach introduces some undesirable properties.
+
+#### Question: What problem did the introduction of timelocks create?
+<details>
+  <summary>Answer</summary>
+  <br/>
+They gave our channels a limited lifetime. Bob must close the channel before the timelock expires otherwise Alice can take all of her funds back using the refund spending path.
+</details>
+
+We could build a payment channel off this construct where any new payment creates another transaction with the same properties as this transaction, but with a new channel balance.
+#### Question: How come Bob cannot pay Alice using this channel?
+<details>
+  <summary>Answer</summary>
+  <br/>
+Under this new construct, every payment from Alice to Bob will be a new 2-of-2 multisig transaction with a timelocked refund to Alice. For example, imagine the following scenario:
+  
+- The channel starts with 5 bitcoin on Alice's side.
+- Alice makes a payment to Bob of 2 bitcoin. Alice now has 3 bitcoin on her side.
+- Bob makes a payment back to Alice for 1 bitcoin. Alice now has 4 bitcoin.
+  
+Since we cannot "cancel" old transactions, Bob can still broadcast the old channel state which pays him 2 bitcoin. To protect from this, the channel would have to be one-way from Alice to Bob.
+</details>
 
 </details>
 
@@ -46,12 +65,10 @@ Great! We've identified a way to issue a refund transaction. All we have to do i
 Similar to **Pay-To-Witness-Script-Hash** (**P2WSH**), the first byte in the **scriptPubKey** for a **P2WPKH** transaction will indicate the **witness version**, which is also ```OP_0```.
 
 
+<p align="center" style="width: 50%; max-width: 300px;">
+  <img src="./tutorial_images/intro_to_htlc/AliceAndBob2.png" alt="SampleTx" width="50%" height="auto">
+</p>
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/AliceBobRefundP2WPKH.png" alt="AliceBobRefundP2WPKH" width="100%" height="auto">
 </p>
-
-## ⚡️ Write Function `p2wpkh` To Generate Our Commitment Transaction's Pay-To-Witness-Public-Key-Hash Output Script
-
-`p2wpkh` will take a public key as an input and constructs the output script we need to use.
-```

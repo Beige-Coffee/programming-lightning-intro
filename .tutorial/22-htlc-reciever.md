@@ -13,7 +13,9 @@ However, similar to the HTLC Offerer transaction, there is a dilema here! Bob's 
   <summary>
     Answer
 </summary>
-Bob can only claim the output *before* the ```cltv_expiry``` timelock expires. However, since Bob also has to wait ```to_self_delay``` to spend the output from the preimage spending path, there is a chance that the ```to_self_delay``` is longer than the ```cltv_expiry```. If this happens, Alice could potentially spend the output along her expiry path when, in fact, Bob did have the preimage before expiry.  Do you know how we can fix this?
+  
+Bob can only claim the output *before* the `cltv_expiry` timelock expires. However, since Bob also has to wait `to_self_delay` to spend the output from the preimage spending path, there is a chance that the `to_self_delay` is longer than the `cltv_expiry`. If this happens, Alice could potentially spend the output along her expiry path when, in fact, Bob did have the preimage before expiry.  Do you know how we can fix this?
+
 </details>
 
 <p align="center" style="width: 50%; max-width: 300px;">

@@ -1,53 +1,44 @@
 # Asymmetric Commitment Transactions 
-Up until now, there is a pretty important detail that has been abstracted away from our commitment transactions.
+Up until now, there is a pretty important detail that has been abstracted away from our commitment transactions. In the actual Lightning Network, each party has their own version of ***each*** commitment transaction. They are mirror images of each other, but their output scripts are slightly different.
 
-In the actual Lightning Network, each party has their own version of ***each*** commitment transaction. They are mirror images of each other, but they do not contain the exact same information. For example, below you will see both Alice and Bob's respective version of the commitment transaction that reflects the first update they made to their channel: Alice sending Bob 2 bitcoin.
-
-Before reviewing the commitment transactions, note that we've added another public key for both Alice and Bob. This public key represents each party's **revocation public key**. When Alice and Bob decide to move to a new channel state (create a new commitment transaction), they give eachother the information needed to calculate each other's **revocation private key**. This is how we effectively revoke old transactions. Since, if you publish an old transaction, you've already given your counterparty a way to spend all of your funds (which would be very bad for you!).
+Before reviewing the commitment transactions, note that we've added another public key for both Alice and Bob. This public key represents each party's **revocation public key**. When Alice and Bob decide to move to a new channel state (create a new commitment transaction), they give eachother the information needed to calculate each other's **revocation private key**. This is how we effectively revoke old transactions. *If you publish an old transaction, you've already given your counterparty a way to spend all of your funds (which would be very bad for you!)*.
 
 <p align="center" style="width: 50%; max-width: 300px;">
-  <img src="./tutorial_images/intro_to_htlc/revocation_key.png" alt="revocation_keys" width="40%" height="auto">
+  <img src="./tutorial_images/intro_to_htlc/revocation_keys_no_delay.png" alt="revocation_keys_no_delay" width="40%" height="auto">
 </p>
 
 <p align="center" style="width: 50%; max-width: 300px;">
-  <img src="./tutorial_images/intro_to_htlc/AsymmetricCommits2.png" alt="AsymmetricCommits2" width="100%" height="auto">
+  <img src="./tutorial_images/intro_to_htlc/AsymmetricCommitsNoTimelock.png" alt="AsymmetricCommitsNoTimelock" width="100%" height="auto">
 </p>
 
-## Creating Revocation Keys
+## Creating Revocation Paths
+
+To generate revocation paths, Alice and Bob each create their own private keys (secrets) and public keys (basepoints or points). By combining each other's public keys, they can create a new public key for which neither of them knows the secret key. *However*, when they move to a new channel state, they exchange some private key information that can be used to calculate a signature for **the other party's revocation public key**. This way, they enable their counterparty to claim their funds if and only if they attempt to publish an old transaction.
 
 <p align="center" style="width: 50%; max-width: 300px;">
-  <img src="./tutorial_images/intro_to_htlc/revocation_steps.png" alt="revocation_steps" width="100%" height="auto">
+  <img src="./tutorial_images/intro_to_htlc/revocationSteps.png" alt="revocationSteps" width="100%" height="auto">
 </p>
 
-## ⚡️ Write Function `generate_revocation_pubkey` To Generate A Revocation Public Key For Our Output Script
-```rust
-fn generate_revocation_pubkey(countersignatory_basepoint: &PublicKey, per_commitment_point: &PublicKey) -> PublicKey {
-}
-```
-
-# {!!!Direct user to BOLT to find equation. Provide equation for them as hint!!!}
-This will get a little mathy, but don't worry! We'll step through it together. Below is the general equation for calculating a revocation public key.
-
-First, let's define the following terms:
-
-<p align="center" style="width: 50%; max-width: 300px;">
-  <img src="./tutorial_images/intro_to_htlc/revocation_vals.png" alt="revocation_vals" width="50%" height="auto">
-</p>
-
-In the above terms:
-- `R` is the remote party's revocation basepoint. If Alice is calcuating the revocation public key, then this will be Bob's revocation basepoint, which Bob gives to Alice when they set up the channel.
-- `S` is Alice's per commitment point. Remember, this is a public key that is unique to every commitment transaction.
-- `h1` is the SHA256 hash of both public keys. The `||` symbol means "concatenate". Therefore, to calculate `h1`, we serialize both keys, concatenate them together, and then take the hash of the result.
-- `h2` is the SHA256 hash of both public keys, but in the opposite order as `h1`.
-
-
-The function to calculate the revocation public key is:
+## ⚡️ Generate A Revocation Public Key
+For this exercise, we'll generate a revocation public key that can be used in an output script to protect our counterparty against us cheating. This will get a little mathy, but don't worry! We'll step through it together. Below is the general equation for calculating a revocation public key.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/revocation_equation.png" alt="revocation_equation" width="50%" height="auto">
 </p>
 
-Try to complete the function `generate_revocation_pubkey` to calculate the revocation public key when given a counterparty's revocation basepoint and your own per commitment point. This function should return the revocation public key we need to include in our commitment transaction.
+<p align="center" style="width: 50%; max-width: 300px;">
+  <img src="./tutorial_images/intro_to_htlc/revocation_vals.png" alt="revocation_vals" width="50%" height="auto">
+</p>
+
+<details>
+  <summary>Click for more details on each component in the equation</summary>
+  <br/>
+
+- `R` is the remote party's revocation basepoint. If Alice is calcuating the revocation public key, then this will be Bob's revocation basepoint, which Bob gives to Alice when they set up the channel.
+- `S` is Alice's per commitment point. Remember, this is a public key that is unique to every commitment transaction.
+- `h1` is the SHA256 hash of both public keys. The `||` symbol means "concatenate". Therefore, to calculate `h1`, we serialize both keys, concatenate them together, and then take the hash of the result.
+- `h2` is the SHA256 hash of both public keys, but in the opposite order as `h1`.
+</details>
 
 To help you with completing this excercise, the following functions are available to you:
 
@@ -71,12 +62,19 @@ Finally, note that you can add two public keys together by using the `.combine()
 key1.combine(key2)
 ```
 
-Okay, you should have everything you need to implement `generate_revocation_pubkey` using the above functions and methods! If you would like a hint, click below:
+#### ⚡️ Write Function `generate_revocation_pubkey` To Generate A Revocation Public Key For Our Output Script
+Try to complete the function `generate_revocation_pubkey` to calculate the revocation public key when given a counterparty's revocation basepoint and your own per commitment point. This function should return the revocation public key we need to include in our commitment transaction.
+```rust
+fn generate_revocation_pubkey(countersignatory_basepoint: &PublicKey, per_commitment_point: &PublicKey) -> PublicKey {
+}
+```
+
+If you would like a hint, click below:
 <details>
   <summary>Hint</summary>
   <br/>
 
-Try implementing the following pseudo-code:
+Try implementing the following:
 - Calculate `h1` by obtaining the SHA256 of `R` and `P` concatenated.
 - Calculate `h2` by obtaining the SHA256 of `P` and `R` concatenated.
 - Multiply `R` by `h1`. Remember, `R` is a public key and `h1` is a SHA256 hash, which will be interpreted as a scalar to "tweak" the public key.
@@ -85,7 +83,6 @@ Try implementing the following pseudo-code:
 
 </details>
 
-#
 #
 #### A keen eye may have already noticed that this penalty mechanism is missing something very important. Can you tell what it is?
 

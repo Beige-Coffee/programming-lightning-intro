@@ -1,10 +1,10 @@
 # Channel Open
 
-Now that Alice and Bob have created their funding transaction and, crucially, refund transaction, they are ready to open their channel. Remember, Alice cannot broadcast the funding transaction without having a refund transaction ready, as this would open Alice up to the risk that Bob stops responding or refuses to cooporate, effectively locking Alice's funds in this channel forever! Also, Bob has every incentive to sign the refund transaction before opening the channel, as he has no bitcoin on his side of the channel at this point anyway, so he is not exposing himself to any risk of loss.
+Now that Alice and Bob have created their funding transaction and, crucially, refund transaction, they are ready to open their channel. Remember, Alice cannot broadcast the funding transaction without having a refund transaction ready, as this would open Alice up to the risk that Bob stops responding or refuses to cooporate, effectively locking Alice's funds in this channel forever! 
 
-Once these transactions are created, the next step is to broadcast the funding transaction to the Bitcoin network and wait for it to be included in a block. To ensure the transaction is considered final and irreversible, it’s standard practice to wait until the block containing the transaction has at least 6 confirmations (i.e., 6 additional blocks mined on top of it). This is because the Bitcoin network follows the longest chain with the most accumulated proof of work, which is typically the chain with the most blocks. As a result, a transaction could initially be included in a block that gets replaced if a longer chain emerges. By waiting for 6 confirmations, the likelihood of such a reorganization occurring becomes extremely low. 
+Once these transactions are created, the next step is to broadcast the funding transaction to the Bitcoin network and wait for it to be included in a block. To ensure the transaction is considered final and irreversible, it’s standard practice to wait until the block containing the transaction has at least 6 confirmations (i.e., 6 additional blocks mined on top of it).
 
-Therefore as part of our payment channel protocol, we will need to be able to monitor the chain and watch for a block that contains this funding transaction output before we can consider the payment channel safe to operate.
+As part of our payment channel protocol, we will need to be able to monitor the chain and watch for a block that contains this funding transaction output before we can consider the payment channel safe to operate.
 
 ## ⚡️ Write a function `block_connected` that is called when new blocks are found and returns whether or not a valid funding output was found in this block
 
@@ -64,3 +64,24 @@ We want to iterate over the blocks transactions and for each transaction iterate
 ```rust
 fn block_connected(funding_output: Script, channel_amount_sats: u64, block: Block) -> bool {}
 ```
+
+<details>
+  <summary>Click here if you need a hint</summary>
+  <br/>
+
+Psuedo code is provided below.
+```rust
+fn block_connected(funding_output: ScriptBuf, channel_amount_sats: u64, block: Block) -> bool {
+    // for each transaction in block
+
+        // for each output in transaction outputs
+
+            // if output script_pubkey = funding_output AND output value = channel_amount_sats
+                    
+                // return true
+            
+    // return false
+}
+```
+
+</details>

@@ -6,7 +6,7 @@ To begin our payment process, Alice will inform Dianne that she would like to pa
   <img src="./tutorial_images/intro_to_htlc/PreimageHash.png" alt="PreimageHash" width="100%" height="auto">
 </p>
 
-The **preimage** is crucual to the current construction of the Lightning Network because it allows for *conditional payments*. A conditional payment is one where the payment is only completed if a specific condition is met. When we combine preimage hashes with tools we learned about earlier, such as timelocks, we can create very usefyl payment contracts. For exampme, Alice can create a payment contract with Bob such that Bob can only claim the bitcoin if:
+The **preimage** is crucual to the current construction of the Lightning Network because it allows for *conditional payments*. A conditional payment is one where the payment is only completed if a specific condition is met. When we combine preimage hashes with tools we learned about earlier, such as timelocks, we can create very useful **payment contracts**. For example, Alice can create a payment contract with Bob such that Bob can only claim the bitcoin if:
 1) He provides the preimage that, when hashed, equals the preimage hash that Dianne gave Alice.
 2) Bob provides the preimage hash within a specific time period. For instance, 150 blocks (~25 hours).
    - The time period is specified as an **absolute timelock**. So each contract will only be valid until a certain block height is reached.
@@ -25,11 +25,11 @@ In this way, Alice can pay Dianne by initiating a chain of payments through each
   <img src="./tutorial_images/intro_to_htlc/HTLCRedeem.png" alt="HTLCRedeem" width="100%" height="auto">
 </p>
 
-#### Question: Why are the block heights decreasing along the path from sender (Alice) to reciever (Dianne)?
+#### Question: Why are the block height timeouts decreasing along the path from sender (Alice) to reciever (Dianne)?
 <details>
   <summary>Answer</summary>
   <br/>
 
-add answer here
+Decreasing block height timeouts is crucial to achieving atomicity. If all channels in the route had the same timeout, then there is a chance that Dianne reveals the preimage right before the timeout. In this scenario, she may have enough time to claimm the HTLC funds, but Bob wouldnt have time to claim the funds in his channel with Alice. To ensure that all participants have time to claim the funds, we decrease the timeout with each step along the route towards the final destination.
 
 </details>

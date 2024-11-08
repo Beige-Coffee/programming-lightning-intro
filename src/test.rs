@@ -4,7 +4,7 @@ use crate::{
     block_connected, build_htlc_offerer_witness_script, build_htlc_receiver_witness_script,
     channel_closed, cltv_p2pkh, csv_p2pkh, generate_revocation_pubkey,
     handle_funding_generation_ready, p2pkh, p2sh, payment_channel_funding_output, spend_multisig,
-    spend_refund, two_of_three_multisig_redeem_script, two_of_two_multisig,
+    spend_refund, two_of_three_multisig_redeem_script, two_of_two_multisig, build_timelocked_transaction
 };
 
 use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash};
@@ -513,6 +513,47 @@ fn test_generate_revocation_pubkey() {
     assert_eq!(
         actual, expected,
         "Revocation pubkey doesn't match expected value"
+    );
+}
+
+#[test]
+fn test_build_timelocked_transaction() {
+    let outpoint = OutPoint::new(
+        "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
+            .parse::<Txid>()
+            .unwrap(),
+        1,
+    );
+
+    let txins = vec![TxIn {
+                previous_output: outpoint,
+                script_sig: ScriptBuf::new(),
+                sequence: Sequence::MAX,
+                witness: Witness::new(),
+            }];
+
+    let pubkey = pubkey_from_private_key(&[0x01; 32]);
+
+    let block_height: u32 = 1000000;
+
+    let csv_delay: i64 = 144;
+
+    let amount = Amount::from_sat(100000);
+
+    let transaction =
+        build_timelocked_transaction(txins,
+                                    &pubkey,
+                                    block_height,
+                                    csv_delay,
+                                    amount);
+
+    let actual = transaction.compute_txid().to_string();
+
+    let expected = "bcd82f4d3ae92ae10ae51ba24693028560fed42eb3d8456d2cc88867351b71df";
+
+    assert_eq!(
+        actual, expected,
+        "Transaction ID doesn't match expected value"
     );
 }
 

@@ -3,10 +3,12 @@ pub mod internal;
 
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
+use bitcoin::locktime::absolute::LockTime;
 use bitcoin::script::ScriptBuf;
 use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::transaction::Version;
 use bitcoin::PubkeyHash;
-use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxOut};
+use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
@@ -79,6 +81,33 @@ fn csv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
         .push_opcode(opcodes::OP_EQUALVERIFY)
         .push_opcode(opcodes::OP_CHECKSIG)
         .into_script()
+}
+
+fn build_output(amount: Amount, output_script: ScriptBuf) -> TxOut {
+    TxOut {
+        value: amount,
+        script_pubkey: output_script,
+    }
+}
+
+fn build_timelocked_transaction(
+    txins: Vec<TxIn>,
+    pubkey: &PublicKey,
+    block_height: u64,
+    csv_delay: u32,
+    amount: Amount,
+) -> Transaction {
+    
+    let output_script = csv_p2pkh(pubkey, csv_delay);
+    
+    let txout = build_output(amount, output_script);
+
+    Transaction {
+        version: Version::ONE,
+        lock_time: LockTime::from_height(block_height),
+        input: txins,
+        output: vec![txout],
+    }
 }
 
 fn payment_channel_funding_output(

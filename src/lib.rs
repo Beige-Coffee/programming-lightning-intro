@@ -4,14 +4,16 @@ pub mod internal;
 use bitcoin::amount::Amount;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
+use bitcoin::locktime::absolute::LockTime;
 use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
+use bitcoin::transaction::Version;
 use bitcoin::PubkeyHash;
-use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxOut};
+use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
@@ -27,11 +29,18 @@ fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
         .into_script()
 }
 
-fn p2sh(script_hash: &ScriptHash) -> ScriptBuf {
+fn two_of_three_multisig_redeem_script(
+    pubkey: &PublicKey,
+    pubkey2: &PublicKey,
+    pubkey3: &PublicKey,
+) -> ScriptBuf {
     Builder::new()
-        .push_opcode(opcodes::OP_HASH160)
-        .push_script_hash(script_hash)
-        .push_opcode(opcodes::OP_EQUAL)
+        .push_int(2)
+        .push_key(pubkey)
+        .push_key(pubkey2)
+        .push_key(pubkey3)
+        .push_int(3)
+        .push_opcode(opcodes::OP_CHECKMULTISIG)
         .into_script()
 }
 
@@ -45,18 +54,11 @@ fn two_of_two_multisig(alice_pubkey: &PublicKey, bob_pubkey: &PublicKey) -> Scri
         .into_script()
 }
 
-fn two_of_three_multisig_redeem_script(
-    pubkey: &PublicKey,
-    pubkey2: &PublicKey,
-    pubkey3: &PublicKey,
-) -> ScriptBuf {
+fn p2sh(script_hash: &ScriptHash) -> ScriptBuf {
     Builder::new()
-        .push_int(2)
-        .push_key(pubkey)
-        .push_key(pubkey2)
-        .push_key(pubkey3)
-        .push_int(3)
-        .push_opcode(opcodes::OP_CHECKMULTISIG)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_script_hash(script_hash)
+        .push_opcode(opcodes::OP_EQUAL)
         .into_script()
 }
 
@@ -91,41 +93,19 @@ fn payment_channel_funding_output(
     bob_pubkey: &PublicKey,
     height: i64,
 ) -> ScriptBuf {
-    Builder::new()
-        .push_opcode(opcodes::OP_IF)
-        .push_script(two_of_two_multisig(alice_pubkey, bob_pubkey))
-        .push_opcode(opcodes::OP_ELSE)
-        .push_script(csv_p2pkh(alice_pubkey, height))
-        .push_opcode(opcodes::OP_ENDIF)
-        .into_script()
+    todo!()
 }
 
 fn block_connected(funding_output: ScriptBuf, channel_amount_sats: Amount, block: Block) -> bool {
-    let mut connected = false;
-    for tx in block.txdata {
-        for output in tx.output {
-            if output.script_pubkey == funding_output && output.value == channel_amount_sats {
-                connected = true
-            }
-        }
-    }
-    connected
+    todo!()
 }
 
 fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> ScriptBuf {
-    Builder::new()
-        .push_signature(alice_signature)
-        .push_signature(bob_signature)
-        .push_int(0)
-        .into_script()
+    todo!()
 }
 
 fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> ScriptBuf {
-    Builder::new()
-        .push_signature(alice_signature)
-        .push_key(alice_pubkey)
-        .push_int(1)
-        .into_script()
+    todo!()
 }
 
 pub fn generate_revocation_pubkey(
@@ -156,33 +136,7 @@ fn build_htlc_offerer_witness_script(
     local_htlc_pubkey: &PublicKey,
     payment_hash160: &[u8; 20],
 ) -> ScriptBuf {
-    Builder::new()
-        .push_opcode(opcodes::OP_DUP)
-        .push_opcode(opcodes::OP_HASH160)
-        .push_slice(revocation_pubkey160)
-        .push_opcode(opcodes::OP_EQUAL)
-        .push_opcode(opcodes::OP_IF)
-        .push_opcode(opcodes::OP_CHECKSIG)
-        .push_opcode(opcodes::OP_ELSE)
-        .push_key(&remote_htlc_pubkey)
-        .push_opcode(opcodes::OP_SWAP)
-        .push_opcode(opcodes::OP_SIZE)
-        .push_int(32)
-        .push_opcode(opcodes::OP_EQUAL)
-        .push_opcode(opcodes::OP_NOTIF)
-        .push_opcode(opcodes::OP_DROP)
-        .push_int(2)
-        .push_opcode(opcodes::OP_SWAP)
-        .push_key(&local_htlc_pubkey)
-        .push_int(2)
-        .push_opcode(opcodes::OP_CHECKMULTISIG)
-        .push_opcode(opcodes::OP_ELSE)
-        .push_opcode(opcodes::OP_HASH160)
-        .push_slice(payment_hash160)
-        .push_opcode(opcodes::OP_EQUALVERIFY)
-        .push_opcode(opcodes::OP_CHECKSIG)
-        .push_opcode(opcodes::OP_ENDIF)
-        .into_script()
+    todo!()
 }
 
 fn build_htlc_receiver_witness_script(
@@ -192,47 +146,11 @@ fn build_htlc_receiver_witness_script(
     payment_hash160: &[u8; 20],
     cltv_expiry: i64,
 ) -> ScriptBuf {
-    Builder::new()
-        .push_opcode(opcodes::OP_DUP)
-        .push_opcode(opcodes::OP_HASH160)
-        .push_slice(&revocation_pubkey160)
-        .push_opcode(opcodes::OP_EQUAL)
-        .push_opcode(opcodes::OP_IF)
-        .push_opcode(opcodes::OP_CHECKSIG)
-        .push_opcode(opcodes::OP_ELSE)
-        .push_key(&remote_htlc_pubkey)
-        .push_opcode(opcodes::OP_SWAP)
-        .push_opcode(opcodes::OP_SIZE)
-        .push_int(32)
-        .push_opcode(opcodes::OP_EQUAL)
-        .push_opcode(opcodes::OP_IF)
-        .push_opcode(opcodes::OP_HASH160)
-        .push_slice(&payment_hash160)
-        .push_opcode(opcodes::OP_EQUALVERIFY)
-        .push_int(2)
-        .push_opcode(opcodes::OP_SWAP)
-        .push_key(&local_htlc_pubkey)
-        .push_int(2)
-        .push_opcode(opcodes::OP_CHECKMULTISIG)
-        .push_opcode(opcodes::OP_ELSE)
-        .push_opcode(opcodes::OP_DROP)
-        .push_int(cltv_expiry)
-        .push_opcode(opcodes::OP_CLTV)
-        .push_opcode(opcodes::OP_DROP)
-        .push_opcode(opcodes::OP_CHECKSIG)
-        .push_opcode(opcodes::OP_ENDIF)
-        .into_script()
+    todo!()
 }
 
 fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
-    for tx in block.txdata {
-        for input in tx.input {
-            if input.previous_output == funding_outpoint {
-                return true;
-            }
-        }
-    }
-    false
+    todo!()
 }
 
 fn handle_funding_generation_ready(
@@ -258,6 +176,31 @@ fn handle_funding_generation_ready(
         counterparty_node_id,
         signed_tx,
     );
+}
+
+fn build_output(amount: Amount, output_script: ScriptBuf) -> TxOut {
+    TxOut {
+        value: amount,
+        script_pubkey: output_script,
+    }
+}
+
+fn build_timelocked_transaction(
+    txins: Vec<TxIn>,
+    pubkey: &PublicKey,
+    block_height: u32,
+    csv_delay: i64,
+    amount: Amount,
+) -> Transaction {
+    let output_script = csv_p2pkh(pubkey, csv_delay);
+    let txout = build_output(amount, output_script);
+
+    Transaction {
+        version: Version::ONE,
+        lock_time: LockTime::from_consensus(block_height),
+        input: txins,
+        output: vec![txout],
+    }
 }
 
 #[cfg(test)]

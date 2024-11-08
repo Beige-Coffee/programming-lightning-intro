@@ -5,11 +5,17 @@ Okay, we've reviewed a **Pay-to-Public-Key-Hash** script. This was relatively si
 In a P2SH transaction, bitcoin is "locked" to the hash of a script, as opposed to the hash of public key. The script specifies the conditions that must be met to spend the bitcoin later on. To unlock the bitcoin, the spender must provide:
 - The original (unhashed) **Redeem Script** that, when hashed, matches the hash that the bitcoin is locked to.
 - Any other data that the redeem script specfies, such as a valid **signature**, **preimage**, etc.)
+###
+#### What benefits do we obtain by locking to the hash of a script?
+<details>
+  <summary>Answer</summary>
 
 By locking the bitcoin to the hash of a script, we obtain a few benefits:
 
 1) **Flexibility**: While P2PKH is limited to locking Bitcoin to a single public key, P2SH allows for the bitcoin to be locked to more complex conditions, such as requiring multiple signatures to spend the funds (also known as "Multisig"). As we'll see when we dig into the Lightning Network, a variation of P2SH can be used to lock bitcoin to the hash of a secret message, called a "preimage". Therefore, to spend the funds, you must prove that you know the original secret that produced the hash.
 2) **Security**: As we discussed earlier, Bitcoin transactions are publicly viewable on the blockchain. By locking the Bitcoin to a hash of a script, the spending conditions of the script are not viewable until the funds are spent later on.
+
+</details>
 
 ## Locking To Multisig
 To build our intuition of a P2SH script, let's walk through an example where we'd like to lock our funds such that multiple keys are required to spend those funds. This is a very popular use of P2SH transactions.

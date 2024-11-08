@@ -1,7 +1,9 @@
 # Bitcoin Transactions
-Believe it or not, the Lightning Network is built on Bitcoin transactions! To keep the network trustless, decentralized, and secure, we have to employ some clever techniques to make everything work smoothly. In other words, we use a variety of advanced Bitcoin transactions, leveraging features like timelocks, spending paths, and multi-signature setups.
+Believe it or not, the Lightning Network is actually a subset of all Bitcoin transactions!
 
-But don't worry! We'll break it down step by step, introducing each concept gradually to build a solid understanding. Once we've covered the basics, we'll see how all these elements come together to create "payment channels" and, eventually, a full Lightning Network node.
+To keep the network trustless, decentralized, and secure, we have to employ some clever techniques to make everything work smoothly. In other words, we use a variety of advanced Bitcoin transactions, leveraging features like timelocks, spending paths, and multi-signature setups.
+
+We'll break it down step by step, introducing each concept gradually to build a solid understanding. Once we've covered the basics, we'll see how all these elements come together to create "payment channels" and, eventually, a full Lightning Network node.
 
 
 ## Bitcoin Transaction: Inputs and Outputs
@@ -12,9 +14,9 @@ A bitcoin transaction primarily consists of **inputs** and **outputs**.
 
 - An **output** is an amount of bitcoin and a script that locks or determines how that amount of bitcoin can be spent in the future.
 
-In the diagram below, a **key** icon represents a *signature*, and it is placed in the ```scriptSig``` field. On the other hand, a **lock** icon symbolizes a *script* that defines the conditions required to spend Bitcoin, and it is located in the ```scriptPubKey``` field. You'll also notice that the keys and locks are color-coded. This color indicates individual ownership: a key can only unlock and spend Bitcoin from a transaction if it matches the color of the lock associated with that Bitcoin in the previous transaction’s output.
-
-In the below example, the gold key is only able to spend the ouputs from **Tx1** that were "locked" to a gold lock.
+In the diagram below...
+- A **key** icon represents a *signature*, and it is placed in the ```scriptSig``` field.
+- A **lock** icon symbolizes a *script* that defines the conditions required to spend Bitcoin, and it is located in the ```scriptPubKey``` field.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/TxInputReference.png" alt="TxInputReference" width="100%" height="auto">

@@ -1,10 +1,8 @@
 # Segretated Witness (SegWit)
 
-Segregated Witness, also known as "SegWit", was a soft-fork upgrade to Bitcoin that was activated in 2017. This was at the end of the "Blocksize War", a period that lasted from 2015 - 2017 in which many argued whether or not Bitcoin should increase its block size so that it could fit more transactions in each block, effectively leading to a higher transaction throughput and lower fees. A detailed overview of the tradeoffs is beyond the scope of this workshop, however, curious readers can see Jonathan Bier's book, "The Blocksize War", for an in depth analysis.
+Segregated Witness, also known as "SegWit", was a soft-fork upgrade to Bitcoin that was activated in 2017. Why are we mentioning SegWit in this workshop? Well, SegWit was actually a crucial upgrade to Bitcoin and was required for the Lightning Network to work properly.
 
-So, why are we mentioning SegWit in this workshop? Well, SegWit was actually a crucial upgrade to Bitcoin and was required for the Lightning Network to work properly.
-
-As mentioned above, "SegWit" is short for "segretated witness". In Bitcoin parlance, a "witness" is another word for a signature, which is required to prove ownership and move bitcoin. The SegWit upgrade moved the signature data from its previous location, the **scriptSig**, to a separate location, called the **witness stack**. After the upgrade, many SegWit transactions now leave the **scriptSig** blank or enter ```00```, indicating that there is no signature present for that input.
+The SegWit upgrade moved the signature data from its previous location, the **scriptSig**, to a separate location, called the **witness stack**. After the upgrade, many SegWit transactions now leave the **scriptSig** blank or enter ```00```, indicating that there is no signature present for that input.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/SegWit.png" alt="SegWit" width="100%" height="auto">
@@ -24,14 +22,10 @@ By creating a separarate "witness" field in the transaction, SegWit changed whic
 
 Great question—glad you asked!
 
-As a quick teaser for what's to come, the Lightning Network relies on nodes sharing pre-signed transactions that could technically be broadcasted to the Bitcoin blockchain but are deliberately held back for later. As long as each node can validate the legitimacy of these transactions, sharing the data itself is sufficient.
+Lightning relies on channel parties being able to create valid, unbroadcasted off-chain transactions. For this to work, each party must trust that their counterparty cannot alter the transaction in any meaningful way.
 
-Before SegWit, there was a problem: it was possible to create two versions of the same transaction that both had valid signatures, ***but different***, signatures. This meant the transaction ID (TXID) would be different for each version. Since the TXID is used as an identifier in the inputs of other transactions, this opened the door for a scenario where one could give someone a valid transaction (with a specific TXID) and then broadcast a different, also valid, transaction to the Bitcoin network. This inconsistency made it unreliable to reference transactions by TXID.
-
-This issue, called **transaction malleability**, would cause problems in Lightning’s structure. SegWit fixed this by removing the signature data from the TXID calculation, making it impossible to change the TXID without invalidating the transaction.
+Before SegWit, Bob could take a transaction from Alice and subtly modify her signature to produce a new transaction ID while leaving the transaction content unchanged. This issue, called transaction malleability, made it unsafe to build secure off-chain protocols like Lightning.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/MultipleSigs.png" alt="MultipleSigs" width="100%" height="auto">
 </p>
-
-## ??? Write a function to create a transaction ID for a SegWit and Non-Segwit transaction

@@ -6,12 +6,7 @@ On the previous page, we saw the below diagram. In this diagram, the bitcoin was
 - The **public key** corresponding to the **public key hash** in the output script.
 - A valid **signature**, which is created using the private key associated with the public key. This signature will prove that the spender controls the private key without revealing the private key itself.
 
-We lock it to the **hash** of the public key (as opposed to the public key itself) for a few reasons:
-
-1) **Reduce Fees**: In Bitcoin, transaction fees depend on data size. Hash functions condense larger data (like public keys) into smaller, fixed-size "hashes," reducing transaction size and thus lowering fees. Each hash is unique to its input, ensuring security while using less space.
-2) **Security**: Bitcoin transactions are publicly viewable on the blockchain. By locking the Bitcoin to a hash of the public key, the public key itself isn't immediately visible, helping to preserve the recipient's privacy temporarily. However, to spend the Bitcoin, the recipient must reveal their public key. 
-
-As you will see in the below diagram, a **locking script** is placed on each output. It's also worth noting that each output can have a different locking script.
+As you will see in the below diagram, a **locking script** is placed on each output. Each output can have a different locking script.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/scriptPubKey.png" alt="scriptPubKey" width="60%" height="auto">
@@ -27,7 +22,12 @@ The Bitcoin protocol will then proceed to concatenate the ```scriptSig``` data w
   <img src="./tutorial_images/intro_to_htlc/p2pkhStackScript.png" alt="p2pkhStackScript" width="100%" height="auto">
 </p>
 
-From here, we're ready to execute the script to see if the information provided is valid. To do this, we perform the following steps:
+From here, we're ready to execute the script to see if the information provided is valid. An in-depth review of script execution is outside the scope of this workshop, however, if you would like a brief review of how this works, please see "More Details" below.
+
+<br/>
+<details>
+  <summary>More Details</summary>
+  
 1) Start with an empty "stack". This stack will hold all of our data, and we will perform operations on that data.
 2) We read our concatenated scripts from left to right. We begin by adding the first two elements (the ``` <signature>``` and ``` <pubkey>```) to the stack.
 3) The next item in our script is ```OP_DUP```. This informs us that we should duplicate the top item on the stack and add the result back to the top of the stack.
@@ -38,6 +38,10 @@ From here, we're ready to execute the script to see if the information provided 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/p2pkhStack.png" alt="p2pkhStack" width="100%" height="auto">
 </p>
+
+</details>
+
+<br/>
 
 ## ⚡️ Build A Function To Generate Pay-to-Public-Key-Hash Output Scripts
 
@@ -54,7 +58,8 @@ We can define a function that takes in a public key and outputs a script like th
 fn p2pkh(pubkey: &PublicKey) -> Script {}
 ```
 <br/>
-The bitcoin library we are using provides a `Builder` object we can use to construct any `Script` we want. It offers a handful of helper functions for adding opcodes, ints, bytes, and keys to a Script:
+
+The bitcoin library we are using provides a ```Builder``` object we can use to construct any ```Script``` we want. It offers a handful of helper functions for adding opcodes, ints, bytes, and keys to a Script:
 <br/><br/>
 
 * `Builder::new()` - construct a new builder object
@@ -81,3 +86,5 @@ We can build the entire P2PKH script using the methods available on the Builder 
 ```
 
 You can see we use `Builder::new()` to construct a new empty Builder object.  From there we can chain calls to `push_opcode` and `push_pubkey_hash` to build up the script we want.  Finally, we call the `into_script()` method to convert the Builder into the Script that our function needs to return.
+
+### When you think you have the solution, click the big green ```Run``` button at the top of the screen to make sure the unit tests are still passing.

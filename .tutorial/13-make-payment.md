@@ -1,8 +1,6 @@
 # Making a Payment
 
-Once the funding transaction is mined and has recieved 6 confirmations, Alice and Bob can "update" their channel by committing to a new transaction that spends from the funding output. This new transaction is called a **commitment transaction** because it "committs" to a new channel balance. The new channel balance is reflected as **two** separate outputs - one representing the current balance for each recipient. They can do this however many times they would like. Each new transaction represents a new balance between Alice and Bob. When they decide to close the channel, they simply publish the most recent transaction to the Bitcoin network, distributing the funds to addresses that each party unilaterally controls.
-
-For example, on the left side of the diagram below, you will see the funding transaction that we created in an earlier exercise. To make a payment that sends 2 bitcoin to Bob, all we have to do is create a new transaction that spends from the funding output and locks Alice's and Bob's respective amounts to their public keys.
+Once the funding transaction, Alice and Bob can "update" their channel by committing to a new transaction that spends from the funding output. This new transaction is called a **commitment transaction** because it "committs" to a new channel balance. The new channel balance is reflected as **two** separate outputs - one representing the current balance for each recipient. They can do this however many times they would like. When they decide to close the channel, they simply publish the most recent transaction to the Bitcoin network, distributing the funds to addresses that each party unilaterally controls.
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/AliceBobCommitment1.png" alt="AliceBobCommitment1" width="100%" height="auto">

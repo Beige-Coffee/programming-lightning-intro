@@ -1,6 +1,6 @@
 # Revocable Transactions
 
-Recall, our motivation for creating revocable transactions is that we need a way to invalidate old commitment transaction such that Alice and Bob *are disincentivized from* broadcasting them to steal each other's bitcoin. As we saw in the previous exercise, Alice made a payment to Bob of 2 bitcoin, however, she still has a valid refund transaction that she could publish to the Bitcoin network, effectively stealing back the 2 bitcoin.
+Recall, our motivation for creating revocable transactions is that we need a way to invalidate old commitment transaction such that Alice and Bob *are disincentivized from* broadcasting them to steal each other's bitcoin. 
 
 Since Bitcoin does not support the ability to cancel transactions, we need a more clever way to *disincentivize* broadcasting old transactions.
 
@@ -10,8 +10,6 @@ Since Bitcoin does not support the ability to cancel transactions, we need a mor
 
 ## Penalty Mechanism
 A **penalty mechanism** is a system, rule, or process that is designed to discourage undesirable or dishonest behavior. It accomplishes this by imposing a negative consequence or penalty on individuals or entities that violate the rules or norms of that system.
-
-As we will see throughout this workshop, penalty mechanisms are a foundational part of the Lightning Network, as they provide a way to incentivize good behavior in a decentralized system that does not have a central party or entity to enforce that behavior themselves.
 
 Within the context of commitment transactions, we can incentivize good behavior by adding the penalty mechanism rule:
 
@@ -26,12 +24,6 @@ Now that we have our penalty mechanism rule, we just need to identify a way to e
 To enforce this rule, we can do the following:
 1) Add an additional spending path to the output such that, if the counterparty presents a special key, called a **revocation key**, they are able to claim all of the funds. Otherwise, the funds will be sent directly to the intended owner.
 2) For each new transaction, the owner of the funds will provide the counterparty with the information they need to calculate the **revocation key** for the prior transaction. This represents a promise from the owner that they will not publish an old transaction, because, if they did, the counterparty now has the ability to steal all of the owner's funds.
-
-To add this logic to our script, we'll have to make our script more complex. Luckily, we already learned about a more flexible script type called **Pay-To-Witness-Script-Hash** that we can leverage to do this!
-
-All we have to do is update our script to include the following conditional check:
-1) If the counterparty provides the **revocation private key** for the **revocation public key** that we include in the witness script, then they can spend the funds.
-2) Otherwise, if the private key corresponding to the original owner's public key is provided, then the owner can spend the funds. 
 
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/RevocationTx.png" alt="RevocationTx" width="100%" height="auto">

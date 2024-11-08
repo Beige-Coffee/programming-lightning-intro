@@ -14,11 +14,13 @@ However, there is a bit of a dilema here! Alice's spending path must also be del
   <summary>
     Answer
 </summary>
-Since the transaction is timelocked with ```cltv_expiry``` set to some block height in the future, the output cannot be spent until that block height has passed. This is meant to give Bob a specific timeframe for which he can retrieve the preimage and claim the funds. However, Alice must enforce a ```to_self_delay``` relative timelock on her ability to spend the output. This means, in the worst case, if Alice tries to spend this output after the ```cltv_expiry``` expires, she will still have to wait another ```to_self_delay``` blocks before she can spend that output. This effectively gives extra time to Bob to provide the preimage and spend this output to himself. Do you know how we can fix this?
+  
+Since the transaction is timelocked with `cltv_expiry` set to some block height in the future, the output cannot be spent until that block height has passed. This is meant to give Bob a specific timeframe for which he can retrieve the preimage and claim the funds. However, Alice must enforce a ```to_self_delay``` relative timelock on her ability to spend the output. This means, in the worst case, if Alice tries to spend this output after the ```cltv_expiry``` expires, she will still have to wait another ```to_self_delay``` blocks before she can spend that output. This effectively gives extra time to Bob to provide the preimage and spend this output to himself. Do you know how we can fix this?
+
 </details>
 
 <p align="center" style="width: 50%; max-width: 300px;">
-  <img src="./tutorial_images/intro_to_htlc/AliceNoTimeoutTx.png" alt="AliceNoTimeoutTx" width="50%" height="auto">
+  <img src="./tutorial_images/intro_to_htlc/AliceNoTimeoutTx.png" alt="AliceNoTimeoutTx" width="80%" height="auto">
 </p>
 
 ## Addressing The Timelock Dilema
@@ -30,7 +32,7 @@ Together, these changes allow for Alice to claim back her funds once the HTLC ex
 
 
 <p align="center" style="width: 50%; max-width: 300px;">
-  <img src="./tutorial_images/intro_to_htlc/Alice2ndStage.png" alt="Alice2ndStage" width="60%" height="auto">
+  <img src="./tutorial_images/intro_to_htlc/Alice2ndStageTx.png" alt="Alice2ndStageTx" width="60%" height="auto">
 </p>
 
 

@@ -1,4 +1,4 @@
-run = "cargo test -- --nocapture"
+run = "cargo test"
 hidden = [
   "target",
   ".tutorial",
