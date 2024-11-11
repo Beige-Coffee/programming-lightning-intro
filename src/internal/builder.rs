@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use bitcoin::script::{Builder as BitcoinBuilder, ScriptBuf, ScriptHash};
 use bitcoin::opcodes;
 use bitcoin::secp256k1::ecdsa::Signature;

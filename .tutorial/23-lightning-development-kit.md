@@ -4,7 +4,13 @@ It would be a massive undertaking to attempt to implement the entire functionali
 
 The lightning development kit is a library that implements the lightning network protocol but gives you the ability to integrate it directly into your application in exactly the fashion that best suits your needs.
 
-It exposes a broad but extremely powerful set of objects and events for you to utilize when customizing your users' lightning experience.  A better description and overview of these components can be found on their website and corresponding documentation but here's a quick glimpse into the high level components we will be interacting with:
+It exposes a broad but extremely powerful set of objects and events for you to utilize when customizing your users' lightning experience.  
+
+<p align="center" style="width: 50%; max-width: 300px;">
+  <img src="./tutorial_images/intro_to_htlc/ldk-architecture.svg" alt="ldk-architecture" width="100%" height="auto">
+</p>
+
+A better description and overview of these components can be found on their website and corresponding documentation but here's a quick glimpse into the high level components we will be interacting with:
 
 ### ChannelManager
 

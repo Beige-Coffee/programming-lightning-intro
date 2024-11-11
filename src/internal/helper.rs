@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::hashes::HashEngine;

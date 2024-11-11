@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use std::sync::Mutex;
 
 use bitcoin::{BlockHash, TxOut};

@@ -1,6 +1,7 @@
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::internal::bitcoind_client::BitcoindClient;
 use crate::internal::channel_manager::ChannelManager;
-use crate::{
+use crate::ch1_intro_htlcs::exercises::{
     block_connected, build_htlc_offerer_witness_script, build_htlc_receiver_witness_script,
     channel_closed, cltv_p2pkh, csv_p2pkh, generate_revocation_pubkey,
     handle_funding_generation_ready, p2pkh, p2sh, payment_channel_funding_output, spend_multisig,

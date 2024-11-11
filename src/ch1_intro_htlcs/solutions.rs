@@ -1,10 +1,11 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-pub mod internal;
+use crate::internal;
 
+use bitcoin::amount::Amount;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
 use bitcoin::locktime::absolute::LockTime;
-use bitcoin::script::ScriptBuf;
+use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::transaction::Version;
 use bitcoin::PubkeyHash;
@@ -13,8 +14,9 @@ use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
 use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
+use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 
-fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
+pub fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
     Builder::new()
         .push_opcode(opcodes::OP_DUP)
         .push_opcode(opcodes::OP_HASH160)
@@ -24,7 +26,7 @@ fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
         .into_script()
 }
 
-fn two_of_two_multisig(alice_pubkey: &PublicKey, bob_pubkey: &PublicKey) -> ScriptBuf {
+pub fn two_of_two_multisig(alice_pubkey: &PublicKey, bob_pubkey: &PublicKey) -> ScriptBuf {
     Builder::new()
         .push_int(2)
         .push_key(alice_pubkey)
@@ -34,7 +36,7 @@ fn two_of_two_multisig(alice_pubkey: &PublicKey, bob_pubkey: &PublicKey) -> Scri
         .into_script()
 }
 
-fn two_of_three_multisig_redeem_script(
+pub fn two_of_three_multisig_redeem_script(
     pubkey: &PublicKey,
     pubkey2: &PublicKey,
     pubkey3: &PublicKey,
@@ -49,7 +51,7 @@ fn two_of_three_multisig_redeem_script(
         .into_script()
 }
 
-fn p2sh(script_hash: ScriptHash) -> ScriptBuf {
+pub fn p2sh(script_hash: ScriptHash) -> ScriptBuf {
     Builder::new()
         .push_opcode(opcodes::OP_HASH160)
         .push_slice(script_hash)
@@ -57,7 +59,7 @@ fn p2sh(script_hash: ScriptHash) -> ScriptBuf {
         .into_script()
 }
 
-fn cltv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
+pub fn cltv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
     Builder::new()
         .push_int(height_or_timestamp)
         .push_opcode(opcodes::OP_CLTV)
@@ -70,7 +72,7 @@ fn cltv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
         .into_script()
 }
 
-fn csv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
+pub fn csv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
     Builder::new()
         .push_int(height_or_timestamp)
         .push_opcode(opcodes::OP_CSV)
@@ -83,34 +85,33 @@ fn csv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
         .into_script()
 }
 
-fn build_output(amount: Amount, output_script: ScriptBuf) -> TxOut {
+pub fn build_output(amount: Amount, output_script: ScriptBuf) -> TxOut {
     TxOut {
         value: amount,
         script_pubkey: output_script,
     }
 }
 
-fn build_timelocked_transaction(
+pub fn build_timelocked_transaction(
     txins: Vec<TxIn>,
     pubkey: &PublicKey,
-    block_height: u64,
-    csv_delay: u32,
+    block_height: u32,
+    csv_delay: i64,
     amount: Amount,
 ) -> Transaction {
-    
     let output_script = csv_p2pkh(pubkey, csv_delay);
-    
+
     let txout = build_output(amount, output_script);
 
     Transaction {
         version: Version::ONE,
-        lock_time: LockTime::from_height(block_height),
+        lock_time: LockTime::from_height(block_height).unwrap(),
         input: txins,
         output: vec![txout],
     }
 }
 
-fn payment_channel_funding_output(
+pub fn payment_channel_funding_output(
     alice_pubkey: &PublicKey,
     bob_pubkey: &PublicKey,
     height: i64,
@@ -124,7 +125,7 @@ fn payment_channel_funding_output(
         .into_script()
 }
 
-fn block_connected(funding_output: ScriptBuf, channel_amount_sats: u64, block: Block) -> bool {
+pub fn block_connected(funding_output: ScriptBuf, channel_amount_sats: Amount, block: Block) -> bool {
     for tx in block.txdata {
         for output in tx.output {
             if output.script_pubkey == funding_output && output.value == channel_amount_sats {
@@ -135,7 +136,7 @@ fn block_connected(funding_output: ScriptBuf, channel_amount_sats: u64, block: B
     false
 }
 
-fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> ScriptBuf {
+pub fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> ScriptBuf {
     Builder::new()
         .push_signature(alice_signature)
         .push_signature(bob_signature)
@@ -143,7 +144,7 @@ fn spend_multisig(alice_signature: Signature, bob_signature: Signature) -> Scrip
         .into_script()
 }
 
-fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> ScriptBuf {
+pub fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> ScriptBuf {
     Builder::new()
         .push_signature(alice_signature)
         .push_key(alice_pubkey)
@@ -152,9 +153,9 @@ fn spend_refund(alice_pubkey: &PublicKey, alice_signature: Signature) -> ScriptB
 }
 
 pub fn generate_revocation_pubkey(
-    countersignatory_basepoint: PublicKey,
-    per_commitment_point: PublicKey,
-) -> PublicKey {
+    countersignatory_basepoint: Secp256k1PublicKey,
+    per_commitment_point: Secp256k1PublicKey,
+) -> Secp256k1PublicKey {
     let rev_append_commit_hash_key =
         sha256_hash(&countersignatory_basepoint, &per_commitment_point);
 
@@ -173,7 +174,7 @@ pub fn generate_revocation_pubkey(
     pk
 }
 
-fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
+pub fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
     for tx in block.txdata {
         for input in tx.input {
             if input.previous_output == funding_outpoint {
@@ -184,7 +185,7 @@ fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
     false
 }
 
-fn build_htlc_offerer_witness_script(
+pub fn build_htlc_offerer_witness_script(
     revocation_pubkey160: &PubkeyHash,
     remote_htlc_pubkey: &PublicKey,
     local_htlc_pubkey: &PublicKey,
@@ -219,7 +220,7 @@ fn build_htlc_offerer_witness_script(
         .into_script()
 }
 
-fn build_htlc_receiver_witness_script(
+pub fn build_htlc_receiver_witness_script(
     revocation_pubkey160: &PubkeyHash,
     remote_htlc_pubkey: &PublicKey,
     local_htlc_pubkey: &PublicKey,
@@ -258,7 +259,7 @@ fn build_htlc_receiver_witness_script(
         .into_script()
 }
 
-fn handle_funding_generation_ready(
+pub fn handle_funding_generation_ready(
     channel_manager: &ChannelManager,
     bitcoind_client: &BitcoindClient,
     temporary_channel_id: &[u8; 32],
@@ -282,6 +283,3 @@ fn handle_funding_generation_ready(
         signed_tx,
     );
 }
-
-#[cfg(test)]
-mod test;

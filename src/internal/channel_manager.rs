@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 // use lightning::ln::channelmanager;
 // use lightning::ln::channelmanager::{
 // 	ChainParameters, ChannelManagerReadArgs, SimpleArcChannelManager,
