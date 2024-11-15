@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use crate::ch2_keys::exercises::{
+use crate::ch3_keys::exercises::{
   new_simple_key_manager,
 };
 use crate::internal::bitcoind_client::BitcoindClient;
@@ -18,6 +18,7 @@ use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::transaction::Version;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use bitcoin::PubkeyHash;
 use bitcoin::{OutPoint, PublicKey, Sequence, Transaction, TxIn, Witness};
 use rand::{thread_rng, Rng};
@@ -25,9 +26,8 @@ use rand::{thread_rng, Rng};
 #[test]
 fn test_new_simple_key_manager() {
   let seed = [1_u8; 32];
-  let start_time: u64 = 1731279131;
-  let start_time_subsec: u32 = 661666707;
-  let keys_interface_impl = new_simple_key_manager(seed, start_time, start_time_subsec);
+  let child_index: usize = 0;
+  let keys_interface_impl = new_simple_key_manager(seed);
 
   // check seed
   assert_eq!(
@@ -51,18 +51,8 @@ fn test_new_simple_key_manager() {
   );
   // check channel_child_index
   assert_eq!(
-    keys_interface_impl.channel_child_index,
-      0
-  );
-  // check starting_time_secs
-  assert_eq!(
-    keys_interface_impl.starting_time_secs,
-    start_time
-  );
-  // check starting_time_nanos
-  assert_eq!(
-    keys_interface_impl.starting_time_nanos,
-    start_time_subsec
+    keys_interface_impl.channel_child_index.load(Ordering::SeqCst),
+      child_index
   );
 }
 

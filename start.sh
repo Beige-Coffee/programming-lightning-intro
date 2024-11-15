@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Ensure the Rust toolchain is set to stable
+rustup default stable
+
 already_running="$(bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind getblockchaininfo)"
 
 echo $already_running

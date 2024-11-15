@@ -1,42 +1,39 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use std::sync::Mutex;
-
-use bitcoin::{BlockHash, TxOut};
+use bitcoin::hash_types::BlockHash;
+use bitcoin::hashes::Hash;
+use bitcoin::Network;
+use lightning_block_sync::http::HttpEndpoint;
+use lightning_block_sync::rpc::RpcClient;
+use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
+use serde_json;
+use std::str::FromStr;
+use std::sync::Arc;
 
 pub struct BitcoindClient {
-    pub create_raw_tx: Mutex<Option<Vec<TxOut>>>,
-    pub fund_raw_tx: Mutex<Option<String>>,
-    pub sign_raw_tx: Mutex<Option<String>>,
+    pub bitcoind_rpc_client: Arc<RpcClient>,
 }
 
-impl BitcoindClient {
-    pub fn new() -> Self {
-        Self {
-            create_raw_tx: Mutex::new(None),
-            fund_raw_tx: Mutex::new(None),
-            sign_raw_tx: Mutex::new(None),
-        }
+impl BlockSource for BitcoindClient {
+    fn get_header<'a>(
+        &'a self,
+        header_hash: &'a BlockHash,
+        height_hint: Option<u32>,
+    ) -> AsyncBlockSourceResult<'a, BlockHeaderData> {
+        Box::pin(async move {
+            self.bitcoind_rpc_client
+                .get_header(header_hash, height_hint)
+                .await
+        })
     }
 
-    pub fn create_raw_transaction(&self, outputs: Vec<TxOut>) -> String {
-        let mut create_raw_tx = self.create_raw_tx.lock().unwrap();
-        *create_raw_tx = Some(outputs);
-        "rawtxhex".to_string()
+    fn get_block<'a>(
+        &'a self,
+        header_hash: &'a BlockHash,
+    ) -> AsyncBlockSourceResult<'a, BlockData> {
+        Box::pin(async move { self.bitcoind_rpc_client.get_block(header_hash).await })
     }
 
-    pub fn fund_raw_transaction(&self, raw_tx: String) -> String {
-        let mut fund_raw_tx = self.fund_raw_tx.lock().unwrap();
-        *fund_raw_tx = Some(raw_tx);
-        "fundedtxhex".to_string()
-    }
-
-    pub fn sign_raw_transaction_with_wallet(&self, tx_hex: String) -> String {
-        let mut sign_raw_tx = self.sign_raw_tx.lock().unwrap();
-        *sign_raw_tx = Some(tx_hex);
-        "signedtxhex".to_string()
-    }
-
-    pub fn get_new_address(&self) -> String {
-        "randomaddress".to_string()
+    fn get_best_block<'a>(&'a self) -> AsyncBlockSourceResult<(BlockHash, Option<u32>)> {
+        Box::pin(async move { self.bitcoind_rpc_client.get_best_block().await })
     }
 }

@@ -4,9 +4,9 @@ use crate::internal::channel_manager::ChannelManager;
 use crate::ch1_intro_htlcs::exercises::{
     block_connected, build_htlc_offerer_witness_script, build_htlc_receiver_witness_script,
     channel_closed, cltv_p2pkh, csv_p2pkh, generate_revocation_pubkey,
-    handle_funding_generation_ready, p2pkh, p2sh, payment_channel_funding_output, spend_multisig,
+    p2pkh, p2sh, payment_channel_funding_output, spend_multisig,
     spend_refund, two_of_three_multisig_redeem_script, two_of_two_multisig, build_timelocked_transaction
-};
+}; // handle_funding_generation_ready
 
 use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash};
 use bitcoin::amount::Amount;
@@ -29,45 +29,45 @@ const HASH160_DUMMY: [u8; 20] = [
     0x7c, 0x3b, 0x9f, 0xcb,
 ];
 
-#[test]
-fn test_handle_funding_generation_ready() {
-    let bitcoind_client = BitcoindClient::new();
-    let channel_manager = ChannelManager::new();
-    let temporary_channel_id: [u8; 32] = [3; 32];
-    let counterparty_node_id = pubkey_from_private_key(&[0x01; 32]);
-    let channel_value_satoshis = Amount::from_sat(1000000);
-    let output_script = ScriptBuf::new();
-    let user_channel_id = 0;
+//#[test]
+//fn test_handle_funding_generation_ready() {
+//let bitcoind_client = BitcoindClient::new();
+//let channel_manager = ChannelManager::new();
+//let temporary_channel_id: [u8; 32] = [3; 32];
+//let counterparty_node_id = pubkey_from_private_key(&[0x01; 32]);
+//let channel_value_satoshis = Amount::from_sat(1000000);
+//let output_script = ScriptBuf::new();
+//let user_channel_id = 0;
 
-    let result = std::panic::catch_unwind(|| {
-        handle_funding_generation_ready(
-            &channel_manager,
-            &bitcoind_client,
-            &temporary_channel_id,
-            &counterparty_node_id,
-            channel_value_satoshis,
-            output_script,
-            user_channel_id,
-        )
-    });
+//let result = std::panic::catch_unwind(|| {
+//handle_funding_generation_ready(
+//&channel_manager,
+//&bitcoind_client,
+//&temporary_channel_id,
+//&counterparty_node_id,
+//channel_value_satoshis,
+//output_script,
+//user_channel_id,
+//)
+//});
 
-    match result {
-        Ok(_) => {
-            let last_funding_tx_gen = channel_manager.last_funding_tx_gen.lock().unwrap();
-            assert!(last_funding_tx_gen.is_some());
-
-            let (temp_cid, node_id, tx_hex) = last_funding_tx_gen.clone().unwrap();
-            assert_eq!(temp_cid, temporary_channel_id);
-            assert_eq!(node_id, counterparty_node_id);
-            assert_eq!(tx_hex, "signedtxhex".to_string());
-        }
-        Err(e) => {
-            if let Ok(string) = e.downcast::<String>() {
-                println!("{}", string);
-            }
-        }
-    }
-}
+//match result {
+//Ok(_) => {
+//let last_funding_tx_gen = channel_manager.last_funding_tx_gen.lock().unwrap();
+//assert!(last_funding_tx_gen.is_some());
+//
+//let (temp_cid, node_id, tx_hex) = last_funding_tx_gen.clone().unwrap();
+//assert_eq!(temp_cid, temporary_channel_id);
+//assert_eq!(node_id, counterparty_node_id);
+//assert_eq!(tx_hex, "signedtxhex".to_string());
+//}
+//Err(e) => {
+//if let Ok(string) = e.downcast::<String>() {
+//println!("{}", string);
+//}
+//}
+//}
+//}
 
 #[test]
 fn test_channel_closed() {

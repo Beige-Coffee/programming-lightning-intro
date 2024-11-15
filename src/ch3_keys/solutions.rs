@@ -2,9 +2,11 @@
 use crate::internal;
 
 use bitcoin::amount::Amount;
+use bitcoin::bip32::{ChildNumber, Xpriv, Xpub};
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
 use bitcoin::locktime::absolute::LockTime;
+use bitcoin::network::Network;
 use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::ecdsa::Signature;
@@ -15,13 +17,11 @@ use bitcoin::secp256k1::SecretKey;
 use bitcoin::transaction::Version;
 use bitcoin::PubkeyHash;
 use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
 use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
-use bitcoin::bip32::{ChildNumber, Xpriv, Xpub};
-use core::sync::atomic::{AtomicUsize, Ordering};
-use bitcoin::network::Network;
 
 #[derive(Debug)]
 pub struct SimpleKeysManager {
@@ -66,8 +66,11 @@ fn get_public_key(private_key: SecretKey) -> Secp256k1PublicKey {
     public_key
 }
 
-pub fn new_simple_key_manager(seed: [u8; 32], starting_time_secs: u64, starting_time_nanos: u32) -> SimpleKeysManager{
-
+pub fn new_simple_key_manager(
+    seed: [u8; 32],
+    starting_time_secs: u64,
+    starting_time_nanos: u32,
+) -> SimpleKeysManager {
     let master_key = get_master_key(seed);
 
     let node_secret = get_hardened_child_private_key(master_key, 0);

@@ -153,30 +153,30 @@ pub fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
     todo!()
 }
 
-pub fn handle_funding_generation_ready(
-    channel_manager: &ChannelManager,
-    bitcoind_client: &BitcoindClient,
-    temporary_channel_id: &[u8; 32],
-    counterparty_node_id: &PublicKey,
-    channel_value_satoshis: Amount,
-    output_script: ScriptBuf,
-    user_channel_id: u128,
-) {
-    let raw_tx = bitcoind_client.create_raw_transaction(vec![TxOut {
-        value: channel_value_satoshis,
-        script_pubkey: output_script,
-    }]);
-
-    let funded_tx = bitcoind_client.fund_raw_transaction(raw_tx);
-
-    let signed_tx = bitcoind_client.sign_raw_transaction_with_wallet(funded_tx);
-
-    channel_manager.funding_transaction_generated(
-        temporary_channel_id,
-        counterparty_node_id,
-        signed_tx,
-    );
-}
+//pub fn handle_funding_generation_ready(
+//channel_manager: &ChannelManager,
+//bitcoind_client: &BitcoindClient,
+//temporary_channel_id: &[u8; 32],
+//counterparty_node_id: &PublicKey,
+//channel_value_satoshis: Amount,
+//output_script: ScriptBuf,
+//user_channel_id: u128,
+//) {
+//let raw_tx = bitcoind_client.create_raw_transaction(vec![TxOut {
+//value: channel_value_satoshis,
+//script_pubkey: output_script,
+//}]);
+//
+//let funded_tx = bitcoind_client.fund_raw_transaction(raw_tx);
+//
+//let signed_tx = bitcoind_client.sign_raw_transaction_with_wallet(funded_tx);
+//
+//channel_manager.funding_transaction_generated(
+//temporary_channel_id,
+//counterparty_node_id,
+//signed_tx,
+//);
+//}
 
 pub fn build_output(amount: Amount, output_script: ScriptBuf) -> TxOut {
     TxOut {

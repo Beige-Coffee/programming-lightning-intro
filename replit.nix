@@ -1,5 +1,6 @@
 { pkgs }: {
 	deps = [
+   pkgs.rustup
     pkgs.electrs
     pkgs.bitcoin
 		pkgs.rustc

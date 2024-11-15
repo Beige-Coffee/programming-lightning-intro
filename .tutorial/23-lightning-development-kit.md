@@ -1,6 +1,6 @@
 # Lightning Development Kit
 
-It would be a massive undertaking to attempt to implement the entire functionality specified in the BOLTS in order to operate a node on the lightning network.  There are a few of out-of-the-box implementations available to you if all you would like to do is operate a node on the lightning network.  If you want to customize the behavior of how they work you either need to fork and then maintain the project or write plugins that would alter the default behavior. Regardless of the path you take they all are still delivered as a binary and need to be run and controlled over various RPC interfaces.
+It would be a massive undertaking to attempt to implement the entire functionality specified in the BOLTs in order to operate a node on the lightning network.  There are a few of out-of-the-box implementations available to you if all you would like to do is operate a node on the lightning network. However, if you want to customize the behavior of how they work you either need to fork and then maintain the project or write plugins that would alter the default behavior. Regardless of the path you take they all are still delivered as a binary and need to be run and controlled over various RPC interfaces.
 
 The lightning development kit is a library that implements the lightning network protocol but gives you the ability to integrate it directly into your application in exactly the fashion that best suits your needs.
 
@@ -9,6 +9,10 @@ It exposes a broad but extremely powerful set of objects and events for you to u
 <p align="center" style="width: 50%; max-width: 300px;">
   <img src="./tutorial_images/intro_to_htlc/ldk-architecture.svg" alt="ldk-architecture" width="100%" height="auto">
 </p>
+
+LDK enables you to choose your own data storage, wallet, networking stack and blockchain monitoring. In the diagram above the boxes with dotted borders are LDK's modules — these must be configured with either default or custom implementations that you provide.
+
+LDK also uses an event-driven architecture which allows for asynchronous result notification. For example you perform actions like making payments without waiting for the result and are later made aware via an event if the payment was successful or not.
 
 A better description and overview of these components can be found on their website and corresponding documentation but here's a quick glimpse into the high level components we will be interacting with:
 

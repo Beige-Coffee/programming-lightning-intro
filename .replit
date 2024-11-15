@@ -45,3 +45,7 @@ externalPort = 80
 [[ports]]
 localPort = 18444
 externalPort = 3000
+
+[deployment]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "cargo test"]
