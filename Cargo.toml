@@ -13,8 +13,9 @@ lightning-net-tokio = { version = "0.0.125" }
 bitcoin = "0.32"
 rand = "0.4"
 serde_json = { version = "1.0" }
-tokio = { version = "1", features = [ "io-util", "macros", "rt", "rt-multi-thread", "sync", "net", "time" ] }
+tokio = { version = "1", features = [ "io-util", "macros", "rt", "rt-multi-thread", "sync", "net", "time", "full" ] }
 base64 = "0.13.0"
+
 [build-dependencies]
 syn = { version = "1.0.107", features = ["parsing", "full","extra-traits"] }
 

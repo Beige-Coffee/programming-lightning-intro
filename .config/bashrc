@@ -4,6 +4,9 @@ alias bcli='bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind'
 # an alias for getting a new address from core
 alias newaddress='bcli getnewaddress "" "bech32"'
 
+# an alias for getting a new address from core
+alias listunspent='bcli listunspent'
+
 # usage: mine x
 # where x is the number of blocks to mine
 # useful when opening channels and you need to get the funding tx confirmed

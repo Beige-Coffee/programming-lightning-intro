@@ -72,3 +72,20 @@ impl BitcoindClientExercise {
         Ok(client)
     }
 }
+
+pub async fn poll_for_blocks<L: Listen>(bitcoind: BitcoindClientExercise, network: Network,
+                   listener: L) {
+
+    let best_block_header = validate_best_block_header(&bitcoind).await.unwrap();
+
+    let poller = ChainPoller::new(&bitcoind, network);
+
+    let mut cache = HashMap::new();
+
+    let mut spv_client = SpvClient::new(best_block_header, poller, & mut cache, &listener);
+
+    loop {
+        let best_block = spv_client.poll_best_tip().await.unwrap();
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}

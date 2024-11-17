@@ -2,7 +2,8 @@
 use crate::internal;
 use internal::convert::BlockchainInfo;
 use crate::ch2_setup::helpers::{get_http_endpoint, format_rpc_credentials, 
-                                new_rpc_client, test_rpc_call
+                                new_rpc_client, test_rpc_call, get_best_block,
+                                get_chain_poller, get_new_cache, get_spv_client
 };
 use base64;
 use bitcoin::hash_types::{BlockHash};
@@ -20,7 +21,7 @@ use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
 
-
+#[derive(Clone)]
 pub struct BitcoindClientExercise {
     pub(crate) bitcoind_rpc_client: Arc<RpcClient>,
     network: Network,
@@ -86,4 +87,20 @@ pub async fn poll_for_blocks<L: Listen>(bitcoind: BitcoindClientExercise, networ
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
-    
+
+pub async fn poll_for_blocks2<L: Listen>(bitcoind: BitcoindClientExercise, network: Network,
+                   listener: L) {
+
+    let best_block_header = get_best_block(bitcoind.clone());
+
+    let poller = get_chain_poller(bitcoind, network);
+
+    let mut cache = get_new_cache();
+
+    let mut spv_client = get_spv_client(best_block_header.await, poller, &mut cache, &listener);
+
+    loop {
+        let best_block = spv_client.poll_best_tip().await.unwrap();
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}

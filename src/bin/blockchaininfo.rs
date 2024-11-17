@@ -36,6 +36,7 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::runtime::Handle;
 
 pub struct Listener {
 
@@ -84,7 +85,7 @@ pub async fn get_bitcoind2() {
         "bitcoind".to_string(),
         "bitcoind".to_string()
     ));
-    let mut bitcoind =  BitcoindClient{bitcoind_rpc_client: Arc::new(RpcClient::new(&rpc_credentials, http_endpoint).unwrap())};
+    let mut bitcoind =  BitcoindClient{bitcoind_rpc_client: Arc::new(RpcClient::new(&rpc_credentials, http_endpoint).unwrap()), handle: tokio::runtime::Handle::current()};
 
     let _dummy = bitcoind.bitcoind_rpc_client
         .call_method::<BlockchainInfo>("getblockchaininfo", &vec![])

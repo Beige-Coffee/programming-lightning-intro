@@ -2,9 +2,11 @@
 use crate::internal;
 
 use bitcoin::amount::Amount;
+use bitcoin::bip32::{ChildNumber, Xpriv, Xpub};
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
 use bitcoin::locktime::absolute::LockTime;
+use bitcoin::network::Network;
 use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::ecdsa::Signature;
@@ -15,13 +17,13 @@ use bitcoin::secp256k1::SecretKey;
 use bitcoin::transaction::Version;
 use bitcoin::PubkeyHash;
 use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
 use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
-use bitcoin::bip32::{ChildNumber, Xpriv, Xpub};
-use core::sync::atomic::{AtomicUsize, Ordering};
-use bitcoin::network::Network;
+use lightning::sign::KeysManager;
+use std::time::{Duration, SystemTime};
 
 #[derive(Debug)]
 pub struct SimpleKeysManager {
@@ -64,8 +66,7 @@ fn get_public_key(private_key: SecretKey) -> Secp256k1PublicKey {
     public_key
 }
 
-pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager{
-
+pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
     let master_key = get_master_key(seed);
 
     let node_secret = get_hardened_child_private_key(master_key, 0);
@@ -85,4 +86,21 @@ pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager{
         channel_child_index: AtomicUsize::new(0),
         seed: seed,
     }
+}
+
+pub fn unified_onchain_offchain_wallet(seed: [u8; 64]) -> KeysManager {
+    // Other supported networks include mainnet (Bitcoin), Regtest, Signet
+    let master_xprv = Xpriv::new_master(Network::Testnet, &seed).unwrap();
+    let secp = Secp256k1::new();
+    let xprv: Xpriv = master_xprv
+        .derive_priv(&secp, &ChildNumber::from_hardened_idx(535).unwrap())
+        .expect("Your RNG is busted");
+    let ldk_seed: [u8; 32] = xprv.private_key.secret_bytes();
+
+    // Seed the LDK KeysManager with the private key at m/535h
+    let cur = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
+    let keys_manager = KeysManager::new(&ldk_seed, cur.as_secs(), cur.subsec_nanos());
+    keys_manager
 }

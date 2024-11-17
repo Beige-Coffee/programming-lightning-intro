@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::ch3_keys::exercises::{
-  new_simple_key_manager,
+  new_simple_key_manager, unified_onchain_offchain_wallet
 };
 use crate::internal::bitcoind_client::BitcoindClient;
 use crate::internal::channel_manager::ChannelManager;
@@ -54,5 +54,16 @@ fn test_new_simple_key_manager() {
     keys_interface_impl.channel_child_index.load(Ordering::SeqCst),
       child_index
   );
+}
+
+#[test]
+fn test_unifed_onchain_offchain_wallet() {
+  let seed = [1_u8; 64];
+  let keys_interface_impl = unified_onchain_offchain_wallet(seed);
+    // check channel_master_key
+    assert_eq!(
+      keys_interface_impl.get_node_secret_key().display_secret().to_string(),
+"67cf3832ea5f1e0abab97340883623accc3776d9fd7b6cf763e1243d81704219".to_string()
+    );
 }
 

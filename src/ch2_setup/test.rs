@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::ch2_setup::exercises::{
-    BitcoindClientExercise,poll_for_blocks
+    BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
 use base64;
 use bitcoin::{Network};
@@ -99,4 +99,20 @@ async fn test_poll_for_blocks() {
     let listener = Listener{};
 
     poll_for_blocks(bitcoind_rpc_client, network, listener); 
+}
+
+#[tokio::test]
+async fn test_poll_for_blocks2() {
+
+    let host = "0.0.0.0".to_string();
+    let port: u16 = 18443;
+    let rpc_user = "bitcoind".to_string();
+    let rpc_password = "bitcoind".to_string();
+    let network = Network::Regtest;
+
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host, port, rpc_user, rpc_password, network).await.unwrap();
+
+    let listener = Listener{};
+
+    poll_for_blocks2(bitcoind_rpc_client, network, listener); 
 }
