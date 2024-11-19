@@ -2,6 +2,10 @@
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
+use crate::ch2_setup::persist_exercise::{
+    SimpleStore
+};
+use lightning::util::persist::KVStore;
 use base64;
 use bitcoin::{Network};
 use lightning_block_sync::http::HttpEndpoint;
@@ -115,4 +119,27 @@ async fn test_poll_for_blocks2() {
     let listener = Listener{};
 
     poll_for_blocks2(bitcoind_rpc_client, network, listener); 
+}
+
+
+
+#[tokio::test]
+async fn test_SimpleStore() {
+
+    let simple_store = SimpleStore::new(); 
+
+    // Create some example data
+    let data = vec![1, 2, 3, 4, 5]; 
+    simple_store.write("test", "test2", "key1", &data);
+    simple_store.write("test", "test2", "key2", &data);
+    
+    match simple_store.read("test", "test2", "key1") {
+        Ok(data) => println!("Read data: {:?}", data),
+        Err(e) => println!("Error reading data: {}", e),
+    }
+
+    simple_store.remove("test", "test2", "key1", true);
+
+    let keys = simple_store.list("test", "test2");
+    assert_eq!(keys.expect("Keys should be returned").len(), 1);
 }
