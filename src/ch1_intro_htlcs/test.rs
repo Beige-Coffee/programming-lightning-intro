@@ -5,7 +5,7 @@ use crate::ch1_intro_htlcs::exercises::{
     block_connected, build_htlc_offerer_witness_script, build_htlc_receiver_witness_script,
     channel_closed, cltv_p2pkh, csv_p2pkh, generate_revocation_pubkey,
     p2pkh, p2sh, payment_channel_funding_output, spend_multisig,
-    spend_refund, two_of_three_multisig_redeem_script, two_of_two_multisig, build_timelocked_transaction
+    spend_refund, two_of_two_multisig_redeem_script, build_timelocked_transaction
 }; // handle_funding_generation_ready
 
 use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash};
@@ -276,11 +276,10 @@ fn test_payment_channel_funding_output() {
     match result {
         Ok(script) => {
             let their_solution = format!("{}", script.script_hash());
+            println!("their solution: {}", their_solution);
             let acceptable_solutions = [
-                "4a6a4f1fd56fd8684acce69eb49f7ae2b469b077".to_string(),
-                "0479d03e595c9c0242a4e46a2b67564617eaa993".to_string(),
-                "33ed58fc90a6d3687c71e3ce362014347ea2c964".to_string(),
-                "6022dbe26d95d361a0369d355ad12a1b193befa8".to_string(),
+                "26446fab831b84f17ac2ed919290c042c9a85590".to_string(),
+                "9a20026a20485de28a5639550e1c8432fe22f4bb".to_string(),
             ];
             assert!(acceptable_solutions.contains(&their_solution))
         }
@@ -335,48 +334,18 @@ fn test_cltv_p2pkh() {
 }
 
 #[test]
-fn test_two_of_two_multisig() {
+fn test_two_of_two_multisig_redeem_script() {
     let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
     let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
-    let result = std::panic::catch_unwind(|| two_of_two_multisig(&alice_pubkey, &bob_pubkey));
+    let result = std::panic::catch_unwind(|| two_of_two_multisig_redeem_script(&alice_pubkey, &bob_pubkey));
 
     match result {
         Ok(script) => {
             let their_solution = format!("{}", script.script_hash());
+            println!("their solution: {}", their_solution);
             let acceptable_solutions = [
-                "e5c7b40d1f14542cc2c7a15819de088a33c8f7ba".to_string(),
-                "d8fecda80c30e89a9e7f0964ee79ce055288bc1c".to_string(),
-            ];
-
-            assert!(acceptable_solutions.contains(&their_solution))
-        }
-        Err(e) => {
-            if let Ok(string) = e.downcast::<String>() {
-                println!("{}", string);
-            }
-        }
-    }
-}
-
-#[test]
-fn test_two_of_three_multisig_redeem_script() {
-    let pubkey1 = pubkey_from_private_key(&[0x01; 32]);
-    let pubkey2 = pubkey_from_private_key(&[0x02; 32]);
-    let pubkey3 = pubkey_from_private_key(&[0x03; 32]);
-    let result = std::panic::catch_unwind(|| {
-        two_of_three_multisig_redeem_script(&pubkey1, &pubkey2, &pubkey3)
-    });
-
-    match result {
-        Ok(script) => {
-            let their_solution = format!("{}", script.script_hash());
-            let acceptable_solutions = [
-                "ae79902ae33900b679c76ced8576362e4abb15e8".to_string(), //123
-                "1dd8aaf8dacff4b11fe1d0ee75ca4a5a6c5922d5".to_string(), //132
-                "9d1bb190ab3cab8cb38645be2c7d34aee2200792".to_string(), //231
-                "25e33caeb2c30b28710ee5e63ca04f88ad47a6d7".to_string(), //213
-                "521dc8bd33010dce2dc2498bf2d443c2f4568864".to_string(), //321
-                "303bc7ac756ba94a75bf2e211a5575f203f27d0c".to_string(), //312
+                "762e430ec472b5ec002819b29a35872d318fd8ff".to_string(),
+                "6b68ca30436cc5773321c6ab012185bc38580568".to_string(),
             ];
 
             assert!(acceptable_solutions.contains(&their_solution))

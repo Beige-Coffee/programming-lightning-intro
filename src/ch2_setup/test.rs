@@ -1,9 +1,15 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+use lightning::chain::chaininterface::{
+  ConfirmationTarget
+};
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
 use crate::ch2_setup::persist_exercise::{
     SimpleStore
+};
+use crate::ch2_setup::fee_estimator_exercise::{
+    get_est_sat_per_1000_weight
 };
 use lightning::util::persist::KVStore;
 use base64;
@@ -121,10 +127,8 @@ async fn test_poll_for_blocks2() {
     poll_for_blocks2(bitcoind_rpc_client, network, listener); 
 }
 
-
-
 #[tokio::test]
-async fn test_SimpleStore() {
+async fn test_simple_store() {
 
     let simple_store = SimpleStore::new(); 
 
@@ -142,4 +146,17 @@ async fn test_SimpleStore() {
 
     let keys = simple_store.list("test", "test2");
     assert_eq!(keys.expect("Keys should be returned").len(), 1);
+}
+#[tokio::test]
+async fn test_fees() {
+
+    //let fee_estimator = MyAppFeeEstimator::new();
+    let high_fee_target = ConfirmationTarget::UrgentOnChainSweep;
+    let low_fee_target = ConfirmationTarget::MinAllowedAnchorChannelRemoteFee;
+
+    // check UrgentOnChainSweep
+    assert_eq!(get_est_sat_per_1000_weight(low_fee_target), 500);
+
+    // check MinAllowedAnchorChannelRemoteFee
+    assert_eq!(get_est_sat_per_1000_weight(high_fee_target), 1500);
 }

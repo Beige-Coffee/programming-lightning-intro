@@ -36,17 +36,15 @@ pub fn two_of_two_multisig(alice_pubkey: &PublicKey, bob_pubkey: &PublicKey) -> 
         .into_script()
 }
 
-pub fn two_of_three_multisig_redeem_script(
-    pubkey: &PublicKey,
-    pubkey2: &PublicKey,
-    pubkey3: &PublicKey,
+pub fn two_of_two_multisig_redeem_script(
+    pubkey1: &PublicKey,
+    pubkey2: &PublicKey
 ) -> ScriptBuf {
     Builder::new()
         .push_int(2)
-        .push_key(pubkey)
+        .push_key(pubkey1)
         .push_key(pubkey2)
-        .push_key(pubkey3)
-        .push_int(3)
+        .push_int(2)
         .push_opcode(opcodes::OP_CHECKMULTISIG)
         .into_script()
 }
@@ -111,18 +109,18 @@ pub fn build_timelocked_transaction(
     }
 }
 
-pub fn payment_channel_funding_output(
+fn payment_channel_funding_output(
     alice_pubkey: &PublicKey,
     bob_pubkey: &PublicKey,
-    height: i64,
+    blocks_or_timestamp: i64,
 ) -> ScriptBuf {
     Builder::new()
-        .push_opcode(opcodes::OP_IF)
-        .push_script(two_of_two_multisig(alice_pubkey, bob_pubkey))
-        .push_opcode(opcodes::OP_ELSE)
-        .push_script(csv_p2pkh(alice_pubkey, height))
-        .push_opcode(opcodes::OP_ENDIF)
-        .into_script()
+    .push_opcode(opcodes::OP_IF)
+    .push_script(two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey))
+    .push_opcode(opcodes::OP_ELSE)
+    .push_script(csv_p2pkh(alice_pubkey, blocks_or_timestamp))
+    .push_opcode(opcodes::OP_ENDIF)
+    .into_script()
 }
 
 pub fn block_connected(funding_output: ScriptBuf, channel_amount_sats: Amount, block: Block) -> bool {

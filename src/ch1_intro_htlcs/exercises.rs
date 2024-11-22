@@ -29,16 +29,14 @@ pub fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
         .into_script()
 }
 
-pub fn two_of_three_multisig_redeem_script(
-    pubkey: &PublicKey,
-    pubkey2: &PublicKey,
-    pubkey3: &PublicKey,
+pub fn two_of_two_multisig_redeem_script(
+    pubkey1: &PublicKey,
+    pubkey2: &PublicKey
 ) -> ScriptBuf {
     Builder::new()
         .push_int(2)
-        .push_key(pubkey)
+        .push_key(pubkey1)
         .push_key(pubkey2)
-        .push_key(pubkey3)
         .push_int(3)
         .push_opcode(opcodes::OP_CHECKMULTISIG)
         .into_script()
@@ -75,9 +73,9 @@ pub fn cltv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
         .into_script()
 }
 
-pub fn csv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
+pub fn csv_p2pkh(pubkey: &PublicKey, blocks_or_timestamp: i64) -> ScriptBuf {
     Builder::new()
-        .push_int(height_or_timestamp)
+        .push_int(blocks_or_timestamp)
         .push_opcode(opcodes::OP_CSV)
         .push_opcode(opcodes::OP_DROP)
         .push_opcode(opcodes::OP_DUP)
@@ -91,10 +89,38 @@ pub fn csv_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
 pub fn payment_channel_funding_output(
     alice_pubkey: &PublicKey,
     bob_pubkey: &PublicKey,
-    height: i64,
+    blocks_or_timestamp: i64,
 ) -> ScriptBuf {
-    todo!()
+    Builder::new()
+    .push_opcode(opcodes::OP_IF)
+    .push_script(two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey))
+    .push_opcode(opcodes::OP_ELSE)
+    .push_script(csv_p2pkh(alice_pubkey, blocks_or_timestamp))
+    .push_opcode(opcodes::OP_ENDIF)
+    .into_script()
 }
+
+pub fn build_simple_payment_funding_transaction(
+    txins: Vec<TxIn>,
+    alice_pubkey: &PublicKey,
+    bob_pubkey: &PublicKey,
+    block_height: u32,
+    csv_delay: i64,
+    amount: Amount,
+) -> Transaction {
+    
+    let output_script = payment_channel_funding_output(alice_pubkey, bob_pubkey, csv_delay);
+    
+    let txout = build_output(amount, output_script.to_p2wsh());
+
+    Transaction {
+        version: Version::TWO,
+        lock_time: LockTime::ZERO,
+        input: txins,
+        output: vec![txout],
+    }
+}
+
 
 pub fn block_connected(funding_output: ScriptBuf, channel_amount_sats: Amount, block: Block) -> bool {
     todo!()
