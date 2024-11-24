@@ -15,6 +15,7 @@ use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
 use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
 use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
+use bitcoin::hashes::Hash as TraitImport;
 
 pub fn p2pkh(pubkey: &PublicKey) -> ScriptBuf {
     Builder::new()
@@ -184,7 +185,7 @@ pub fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
 }
 
 pub fn build_htlc_offerer_witness_script(
-    revocation_pubkey160: &PubkeyHash,
+    revocation_pubkey: &Secp256k1PublicKey,
     remote_htlc_pubkey: &PublicKey,
     local_htlc_pubkey: &PublicKey,
     payment_hash160: &[u8; 20],
@@ -192,7 +193,7 @@ pub fn build_htlc_offerer_witness_script(
     Builder::new()
         .push_opcode(opcodes::OP_DUP)
         .push_opcode(opcodes::OP_HASH160)
-        .push_slice(revocation_pubkey160)
+        .push_slice(&PubkeyHash::hash(&revocation_pubkey.serialize()))
         .push_opcode(opcodes::OP_EQUAL)
         .push_opcode(opcodes::OP_IF)
         .push_opcode(opcodes::OP_CHECKSIG)

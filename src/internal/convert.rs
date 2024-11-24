@@ -3,6 +3,7 @@ use bitcoin::{Address, BlockHash, Txid};
 use lightning_block_sync::http::JsonResponse;
 use std::convert::TryInto;
 use std::str::FromStr;
+use bitcoin::PublicKey;
 
 #[derive(Debug)]
 pub struct BlockchainInfo {
@@ -37,6 +38,31 @@ impl TryInto<SignedTx> for JsonResponse {
       hex: self.0["hex"].as_str().unwrap().to_string(),
       complete: self.0["complete"].as_bool().unwrap(),
     })
+  }
+}
+
+#[derive(Debug)]
+pub struct AddressPubkey(pub PublicKey);
+
+impl TryInto<AddressPubkey> for JsonResponse {
+  type Error = std::io::Error;
+  
+  fn try_into(self) -> std::io::Result<AddressPubkey> {
+    
+    let pubkey_str = self.0.get("pubkey").ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::InvalidData, "Missing pubkey in response")
+    })?;
+
+    let pubkey = pubkey_str.as_str().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid pubkey format")
+    })?;
+
+    let pubkey = PublicKey::from_str(pubkey).map_err(|e| {
+        std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Invalid pubkey: {}", e))
+    })?;
+
+    Ok(AddressPubkey(pubkey))
+    
   }
 }
 
@@ -76,7 +102,7 @@ impl TryInto<ListUnspentResponse> for JsonResponse {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ListUnspentUtxo {
   pub txid: Txid,
   pub vout: u32,

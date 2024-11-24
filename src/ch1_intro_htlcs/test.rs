@@ -158,7 +158,7 @@ fn test_channel_closed() {
 
 #[test]
 fn test_spend_refund() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let alice_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
     let alice_signature = Signature::from_compact(&[0x01; 64]).unwrap();
 
     let result = std::panic::catch_unwind(|| spend_refund(&alice_pubkey, alice_signature));
@@ -265,12 +265,12 @@ fn test_block_connected() {
 
 #[test]
 fn test_payment_channel_funding_output() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
-    let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let alice_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+    let bob_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
     let height = 1000000;
 
     let result = std::panic::catch_unwind(|| {
-        payment_channel_funding_output(&alice_pubkey, &bob_pubkey, height)
+        payment_channel_funding_output(&bob_pubkey, &alice_pubkey, height)
     });
 
     match result {
@@ -278,8 +278,8 @@ fn test_payment_channel_funding_output() {
             let their_solution = format!("{}", script.script_hash());
             println!("their solution: {}", their_solution);
             let acceptable_solutions = [
-                "26446fab831b84f17ac2ed919290c042c9a85590".to_string(),
-                "9a20026a20485de28a5639550e1c8432fe22f4bb".to_string(),
+                "4a6a4f1fd56fd8684acce69eb49f7ae2b469b077".to_string(),
+                "4b9ea4b7fba619a732e98fd54e913d560dcbd690".to_string(),
             ];
             assert!(acceptable_solutions.contains(&their_solution))
         }
@@ -293,7 +293,7 @@ fn test_payment_channel_funding_output() {
 
 #[test]
 fn test_csv_p2pkh() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let alice_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
     let timestamp: i64 = 1000000000;
 
     let result = std::panic::catch_unwind(|| csv_p2pkh(&alice_pubkey, timestamp));
@@ -314,7 +314,7 @@ fn test_csv_p2pkh() {
 
 #[test]
 fn test_cltv_p2pkh() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let alice_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
     let height: i64 = 1000000;
 
     let result = std::panic::catch_unwind(|| cltv_p2pkh(&alice_pubkey, height));
@@ -335,8 +335,8 @@ fn test_cltv_p2pkh() {
 
 #[test]
 fn test_two_of_two_multisig_redeem_script() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
-    let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let alice_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+    let bob_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
     let result = std::panic::catch_unwind(|| two_of_two_multisig_redeem_script(&alice_pubkey, &bob_pubkey));
 
     match result {
@@ -344,8 +344,8 @@ fn test_two_of_two_multisig_redeem_script() {
             let their_solution = format!("{}", script.script_hash());
             println!("their solution: {}", their_solution);
             let acceptable_solutions = [
-                "762e430ec472b5ec002819b29a35872d318fd8ff".to_string(),
-                "6b68ca30436cc5773321c6ab012185bc38580568".to_string(),
+                "d8fecda80c30e89a9e7f0964ee79ce055288bc1c".to_string(),
+                "e5c7b40d1f14542cc2c7a15819de088a33c8f7ba".to_string(),
             ];
 
             assert!(acceptable_solutions.contains(&their_solution))
@@ -360,7 +360,7 @@ fn test_two_of_two_multisig_redeem_script() {
 
 #[test]
 fn test_p2pkh() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let alice_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
 
     let result = std::panic::catch_unwind(|| p2pkh(&alice_pubkey));
     match result {
@@ -400,16 +400,15 @@ fn test_p2sh() {
 
 #[test]
 fn test_build_htlc_offerer_witness_script() {
-    let remote_htlc_pubkey = pubkey_from_private_key(&[0x01; 32]);
-    let local_htlc_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let remote_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+    let local_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
     let revocation_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
     let payment_hash160 = HASH160_DUMMY;
-    let revocation_hash160 = PubkeyHash::hash(&revocation_key.serialize());
     let cltv_expiry: i64 = 1000000000;
 
     let result = std::panic::catch_unwind(|| {
         build_htlc_receiver_witness_script(
-            &revocation_hash160,
+            &revocation_key,
             &remote_htlc_pubkey,
             &local_htlc_pubkey,
             &payment_hash160,
@@ -436,15 +435,14 @@ fn test_build_htlc_offerer_witness_script() {
 
 #[test]
 fn test_build_htlc_receiver_witness_script() {
-    let remote_htlc_pubkey = pubkey_from_private_key(&[0x01; 32]);
-    let local_htlc_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let remote_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+    let local_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
     let revocation_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
     let payment_hash160 = HASH160_DUMMY;
-    let revocation_hash160 = PubkeyHash::hash(&revocation_key.serialize());
 
     let result = std::panic::catch_unwind(|| {
         build_htlc_offerer_witness_script(
-            &revocation_hash160,
+            &revocation_key,
             &remote_htlc_pubkey,
             &local_htlc_pubkey,
             &payment_hash160,
@@ -502,7 +500,7 @@ fn test_build_timelocked_transaction() {
                 witness: Witness::new(),
             }];
 
-    let pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
 
     let block_height: u32 = 1000000;
 
@@ -534,7 +532,7 @@ pub fn secp256k1_pubkey_from_private_key(private_key: &[u8; 32]) -> Secp256k1Pub
     public_key
 }
 
-fn pubkey_from_private_key(private_key: &[u8; 32]) -> PublicKey {
+pub fn pubkey_from_private_key(private_key: &[u8; 32]) -> PublicKey {
     let secp = Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(private_key).unwrap();
     let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);

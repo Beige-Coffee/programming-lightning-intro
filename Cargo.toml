@@ -17,6 +17,7 @@ tokio = { version = "1", features = [ "io-util", "macros", "rt", "rt-multi-threa
 base64 = "0.13.0"
 serde = { version = "1.0", features = ["derive"] }
 reqwest = { version = "0.11", features = ["json", "blocking", "rustls-tls"] }
+hex = "0.4.3"
 
 [build-dependencies]
 syn = { version = "1.0.107", features = ["parsing", "full","extra-traits"] }

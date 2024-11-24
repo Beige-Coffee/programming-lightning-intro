@@ -5,6 +5,7 @@ use bitcoin::{Network };
 use lightning_block_sync::http::HttpEndpoint;
 use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::http::JsonResponse;
+use bitcoin::{PublicKey, PrivateKey};
 use bitcoin::address::Address;
 use bitcoin::consensus::encode::serialize_hex;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
@@ -14,12 +15,12 @@ use bitcoin::blockdata::transaction::Transaction;
 use std::sync::Arc;
 use bitcoin::consensus::{encode, Decodable, Encodable};
 use crate::internal::convert::{
-    ListUnspentResponse, NewAddress, SignedTx, BlockchainInfo
+    ListUnspentResponse, NewAddress, SignedTx, BlockchainInfo, AddressPubkey
 };
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
 use tokio::runtime::Handle;
 
-
+#[derive(Clone)]
 pub struct BitcoindClient {
     pub bitcoind_rpc_client: Arc<RpcClient>,
     pub handle: tokio::runtime::Handle,
@@ -94,6 +95,16 @@ impl BitcoindClient {
         Address::from_str(addr.0.as_str()).unwrap().require_network(Network::Regtest).unwrap()
     }
 
+    pub async fn get_pubkey(&self, address: Address) -> PublicKey {
+        let addr_args = vec![serde_json::json!(address.to_string())];
+        let pubkey = self
+            .bitcoind_rpc_client
+            .call_method::<AddressPubkey>("getaddressinfo", &addr_args)
+            .await
+            .unwrap();
+        pubkey.0
+        }
+
     pub async fn sign_raw_transaction_with_wallet(&self, tx_hex: String) -> SignedTx {
         let tx_hex_json = serde_json::json!(tx_hex);
         let signed_tx: SignedTx = self.bitcoind_rpc_client
@@ -108,6 +119,7 @@ impl BitcoindClient {
 impl BroadcasterInterface for BitcoindClient {
     fn broadcast_transactions(&self, txs: &[&Transaction]) {
         let txn = txs.iter().map(|tx| encode::serialize_hex(tx)).collect::<Vec<_>>();
+        
         //println!("txn: {:?}", txn);
         let bitcoind_rpc_client = Arc::clone(&self.bitcoind_rpc_client);
         //println!("txn len: {:?}", txn.len());

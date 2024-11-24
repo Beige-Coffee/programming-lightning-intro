@@ -17,4 +17,10 @@ else
   bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind createwallet "pl"
   # mine some blocks so we have bitcoin to use
   bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind generatetoaddress 151 $(bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind getnewaddress "" "bech32")
+
+for i in {1..100}
+do
+  bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind sendtoaddress "$(bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind getnewaddress)" 0.05
+done
+bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind generatetoaddress 1 $(bitcoin-cli -regtest -rpcuser=bitcoind -rpcpassword=bitcoind getnewaddress "" "bech32")
 fi
