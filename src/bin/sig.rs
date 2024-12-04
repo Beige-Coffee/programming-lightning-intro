@@ -49,26 +49,38 @@ use bitcoin::PublicKey;
 
 pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
                                         tx_input: TxIn,
-                                        tx_in_amount: u64) {
+                                        tx_in_amount: Amount) {
 
-    // we're locking to a 2-of-2 multisig, so we need two public keys
-    // normally, we would generate our own public key
-    //   and the counterparty would send us their
-    let our_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
-    let counterparty_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+    let our_public_key = pubkey_from_private_key(&[0x01; 32]);
+    let another_public_key = pubkey_from_private_key(&[0x02; 32]);
+
+    let output_script_a = ScriptBuf::new_p2wpkh(
+        &our_public_key.wpubkey_hash().unwrap());
+
+    let output_script_b = ScriptBuf::new_p2wpkh(
+        &another_public_key.wpubkey_hash().unwrap());
+    
+    let txout_a = TxOut {
+        value: tx_in_amount,
+        script_pubkey: output_script_a,
+    };
+
+    let txout_b = TxOut {
+        value: tx_in_amount,
+        script_pubkey: output_script_b,
+    };
 
     // build funding transaction using the function we created
-    let tx = build_funding_transaction(
-            vec![tx_input],
-            &our_public_key,
-            &counterparty_pubkey,
-            tx_in_amount,
-        );
+    let tx = Transaction {
+        version: Version::ONE,
+        lock_time: LockTime::ZERO,
+        input: vec![tx_input],
+        output: vec![txout_a, txout_b],
+    };
 
     let signed_tx = sign_raw_transaction(bitcoind.clone(), tx).await;
 
 
-    println!("Tx Hex: {}", serialize_hex(&signed_tx));
     println!("Tx ID: {}", signed_tx.compute_txid());
 
     // broadcast transaction
@@ -95,7 +107,7 @@ async fn main() {
         witness: Witness::new(),
     };
 
-    let tx_in_amount = 4_999_800;
+    let tx_in_amount = Amount::from_sat(4_999_800 / 2);
 
     create_broadcast_funding_tx(bitcoind, tx_input, tx_in_amount).await;
 

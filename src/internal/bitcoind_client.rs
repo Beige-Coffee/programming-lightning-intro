@@ -6,6 +6,7 @@ use lightning_block_sync::http::HttpEndpoint;
 use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::http::JsonResponse;
 use bitcoin::{PublicKey, PrivateKey};
+use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 use bitcoin::address::Address;
 use bitcoin::consensus::encode::serialize_hex;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
@@ -46,7 +47,7 @@ impl BlockSource for BitcoindClient {
         Box::pin(async move { self.bitcoind_rpc_client.get_block(header_hash).await })
     }
 
-    fn get_best_block<'a>(&'a self) -> AsyncBlockSourceResult<(BlockHash, Option<u32>)> {
+    fn get_best_block(&self) -> AsyncBlockSourceResult<(BlockHash, Option<u32>)> {
         Box::pin(async move { self.bitcoind_rpc_client.get_best_block().await })
     }
 }
@@ -95,14 +96,14 @@ impl BitcoindClient {
         Address::from_str(addr.0.as_str()).unwrap().require_network(Network::Regtest).unwrap()
     }
 
-    pub async fn get_pubkey(&self, address: Address) -> PublicKey {
+    pub async fn get_pubkey(&self, address: Address) -> Secp256k1PublicKey {
         let addr_args = vec![serde_json::json!(address.to_string())];
         let pubkey = self
             .bitcoind_rpc_client
             .call_method::<AddressPubkey>("getaddressinfo", &addr_args)
             .await
             .unwrap();
-        pubkey.0
+        pubkey.0.into()
         }
 
     pub async fn sign_raw_transaction_with_wallet(&self, tx_hex: String) -> SignedTx {

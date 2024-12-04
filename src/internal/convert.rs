@@ -3,7 +3,7 @@ use bitcoin::{Address, BlockHash, Txid};
 use lightning_block_sync::http::JsonResponse;
 use std::convert::TryInto;
 use std::str::FromStr;
-use bitcoin::PublicKey;
+use bitcoin::secp256k1::PublicKey;
 
 #[derive(Debug)]
 pub struct BlockchainInfo {

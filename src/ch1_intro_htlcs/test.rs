@@ -4,11 +4,12 @@ use crate::internal::channel_manager::ChannelManager;
 use crate::ch1_intro_htlcs::exercises::{
     block_connected, build_htlc_offerer_witness_script, build_htlc_receiver_witness_script,
     channel_closed, cltv_p2pkh, csv_p2pkh, generate_revocation_pubkey,
-    p2pkh, p2sh, payment_channel_funding_output, spend_multisig,
-    spend_refund, two_of_two_multisig_redeem_script, build_timelocked_transaction
+    p2pkh, p2sh, payment_channel_funding_output, spend_multisig,generate_p2wsh_signature,
+    spend_refund, two_of_two_multisig_redeem_script, build_timelocked_transaction, build_multisig_transaction
 }; // handle_funding_generation_ready
-
-use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash};
+use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash, secp256k1_private_key};
+use bitcoin::sighash::EcdsaSighashType;
+use bitcoin::consensus::encode::serialize_hex;
 use bitcoin::amount::Amount;
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::hex::FromHex;
@@ -419,6 +420,7 @@ fn test_build_htlc_offerer_witness_script() {
     match result {
         Ok(script) => {
             let their_solution = format!("{}", script.script_hash());
+            println!("their solution: {}", their_solution);
             let acceptable_solutions = [
                 "db3d8b6f8b95e2bc994dd29941b2431dd9c1d75e".to_string(), //123
             ];
@@ -452,8 +454,9 @@ fn test_build_htlc_receiver_witness_script() {
     match result {
         Ok(script) => {
             let their_solution = format!("{}", script.script_hash());
+            println!("their solution: {}", their_solution);
             let acceptable_solutions = [
-                "0c758acc3320bc585d3cf5ef0416f28430d2398e".to_string(), //123
+                "8bef95533bbe782c3ad32343aeae56006b2096a6".to_string(), //123
             ];
 
             assert!(acceptable_solutions.contains(&their_solution))
@@ -506,7 +509,7 @@ fn test_build_timelocked_transaction() {
 
     let csv_delay: i64 = 144;
 
-    let amount = Amount::from_sat(100000);
+    let amount: u64 = 100000;
 
     let transaction =
         build_timelocked_transaction(txins,
@@ -517,12 +520,100 @@ fn test_build_timelocked_transaction() {
 
     let actual = transaction.compute_txid().to_string();
 
-    let expected = "bcd82f4d3ae92ae10ae51ba24693028560fed42eb3d8456d2cc88867351b71df";
+    let expected = "435a6307b715f5e8196bee440597186eba1e797dee71e8aae5ba1d3bc1d41ed8";
 
     assert_eq!(
         actual, expected,
         "Transaction ID doesn't match expected value"
     );
+}
+
+#[test]
+fn test_generate_p2wsh_signature() {
+    let outpoint = OutPoint::new(
+        "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
+            .parse::<Txid>()
+            .unwrap(),
+        1,
+    );
+
+    let txins = vec![TxIn {
+                previous_output: outpoint,
+                script_sig: ScriptBuf::new(),
+                sequence: Sequence::MAX,
+                witness: Witness::new(),
+            }];
+
+    let private_key = secp256k1_private_key(&[0x01; 32]);
+    let pubkey = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+
+    let block_height: u32 = 1000000;
+
+    let csv_delay: i64 = 144;
+
+    let amount: u64 = 100000;
+
+    let transaction =
+        build_timelocked_transaction(txins,
+                                    &pubkey,
+                                    block_height,
+                                    csv_delay,
+                                    amount);
+
+    let signature = generate_p2wsh_signature(transaction,
+                                      0,
+                                      &ScriptBuf::new(),
+                                      amount,
+                                      EcdsaSighashType::All,
+                                      private_key);
+
+    let signature_der = signature.serialize_der().to_vec();
+
+    let hex_sig = serialize_hex(&signature_der);
+
+    assert_eq!(
+        hex_sig, "473045022100cef19aa2e815da25f6809cb7a3dfa487044c3f48a09618c4e76077f8e8c50409022060bacb75b055cc3c186a9086a3b78f850f35534c7739fc6e9cabae954a0f040a",
+        "Signature doesn't match expected value"
+    );
+}
+
+#[test]
+fn test_build_multisig_transaction() {
+    let outpoint = OutPoint::new(
+        "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
+            .parse::<Txid>()
+            .unwrap(),
+        1,
+    );
+
+    let txin = vec![TxIn {
+                previous_output: outpoint,
+                script_sig: ScriptBuf::new(),
+                sequence: Sequence::MAX,
+                witness: Witness::new(),
+            }];
+
+    let pubkey1 = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+    let pubkey2 = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+
+    let amount: u64 = 100000;
+
+    let transaction =
+        build_multisig_transaction(txin,
+                                    &pubkey1,
+                                    &pubkey2,
+                                    amount);
+
+    let their_solution = transaction.compute_txid().to_string();
+
+    println!("their solution: {}", their_solution);
+
+    let acceptable_solutions = [
+        "9deb308457457267f84ffba50289f2907b405c0c4f2e90442ed9a0c569c190cc".to_string(),
+        "1f884a66e1a73469c8bb4c90e6099c9697728a6aac51ce02d9aadf18c2535d53".to_string(),
+    ];
+
+    assert!(acceptable_solutions.contains(&their_solution));
 }
 
 pub fn secp256k1_pubkey_from_private_key(private_key: &[u8; 32]) -> Secp256k1PublicKey {

@@ -1,4 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+pub mod helper;
 use base64;
 use bitcoin::address::Address;
 use bitcoin::amount::Amount;
@@ -33,7 +34,7 @@ use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use pl_00_intro::internal::bitcoind_client;
 use pl_00_intro::internal::bitcoind_client::BitcoindClient;
-use pl_00_intro::ch1_intro_htlcs::exercises::build_funding_transaction;
+use pl_00_intro::ch1_intro_htlcs::exercises::{build_timelocked_transaction, csv_p2pkh, build_output, build_transaction};
 use pl_00_intro::internal::helper::{secp256k1_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key};
 use pl_00_intro::internal::convert;
 use pl_00_intro::internal::convert::{BlockchainInfo, ListUnspentUtxo, SignedTx};
@@ -46,33 +47,32 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use bitcoin::PublicKey;
+use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction};
 
-pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
-                                        tx_input: TxIn,
-                                        tx_in_amount: u64) {
+pub async fn create_timelock_tx(bitcoind: BitcoindClient,
+                                utxo: ListUnspentUtxo,
+                                tx_input: TxIn,
+                                tx_out_amount: u64) {
 
-    // we're locking to a 2-of-2 multisig, so we need two public keys
-    // normally, we would generate our own public key
-    //   and the counterparty would send us their
-    let our_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
-    let counterparty_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+    // get a public key to lock funds to
+    let public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
 
-    // build funding transaction using the function we created
-    let tx = build_funding_transaction(
-            vec![tx_input],
-            &our_public_key,
-            &counterparty_pubkey,
-            tx_in_amount,
-        );
+    // define a csv delay for the output
+    let csv_delay: i64 = 14;
+
+    let version = Version::ONE;
+    let locktime = LockTime::ZERO;
+
+    let output_script = csv_p2pkh(&public_key, csv_delay);
+    
+    let txout = build_output(tx_out_amount, output_script.to_p2wsh());
+
+    let tx = build_transaction(version, locktime, vec![tx_input], vec![txout]);
 
     let signed_tx = sign_raw_transaction(bitcoind.clone(), tx).await;
 
-
     println!("Tx Hex: {}", serialize_hex(&signed_tx));
-    println!("Tx ID: {}", signed_tx.compute_txid());
-
-    // broadcast transaction
-    bitcoind.broadcast_transactions(&[&signed_tx]);
+    //println!("Tx ID: {}", signed_tx.compute_txid());
 }
 
 #[tokio::main]
@@ -84,7 +84,9 @@ async fn main() {
     // get an unspent output for funding transaction
     let utxo = get_unspent_output(bitcoind.clone()).await;
 
-    // Create a transaction spending this UTXO
+    let tx_in_amount = 4_999_800;
+
+    // define UTXO
     let tx_input = TxIn {
         previous_output: OutPoint {
             txid: utxo.txid,
@@ -95,52 +97,8 @@ async fn main() {
         witness: Witness::new(),
     };
 
-    let tx_in_amount = 4_999_800;
-
-    create_broadcast_funding_tx(bitcoind, tx_input, tx_in_amount).await;
+    create_timelock_tx(bitcoind, utxo, tx_input, tx_in_amount).await;
 
     // Add a delay to allow the spawned task to complete
     sleep(Duration::from_secs(2)).await;
-}
-
-pub async fn get_bitcoind_client() -> BitcoindClient {
-    let bitcoind = BitcoindClient::new(
-        "0.0.0.0".to_string(),
-        18443,
-        "bitcoind".to_string(),
-        "bitcoind".to_string(),
-        Network::Regtest,
-    )
-    .await
-    .unwrap();
-
-    bitcoind
-}
-
-pub async fn get_unspent_output(bitcoind: BitcoindClient) -> ListUnspentUtxo {
-    let utxos = bitcoind.list_unspent().await;
-    let utxo = utxos
-        .0
-        .iter()
-        .find(|utxo| utxo.amount > 4_999_999 && utxo.amount < 6_000_000)
-        .expect("No UTXOs with positive balance found");
-
-    utxo.clone()
-}
-
-pub async fn sign_raw_transaction(bitcoind: BitcoindClient,
-                                  tx: Transaction) -> Transaction {
-
-    // we need to serialize the tx before passing it into
-    //    `sign_raw_transaction_with_wallet`
-    let tx_hex = serialize_hex(&tx);
-
-    // sign the transaction
-    let signed_tx = bitcoind.sign_raw_transaction_with_wallet(tx_hex).await;
-
-    // convert signed transaction hex into a Transaction type
-    let final_tx: Transaction =
-        encode::deserialize(&hex_utils::to_vec(&signed_tx.hex).unwrap()).unwrap();
-
-    final_tx
 }

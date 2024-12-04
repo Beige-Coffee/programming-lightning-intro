@@ -3,22 +3,29 @@ use crate::internal;
 
 use bitcoin::amount::Amount;
 use bitcoin::blockdata::opcodes::all as opcodes;
+use bitcoin::hash_types::Txid;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
+use bitcoin::hashes::sha256::Hash as Sha256;
+use bitcoin::hashes::Hash;
+use bitcoin::hashes::Hash as TraitImport;
 use bitcoin::locktime::absolute::LockTime;
 use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::Message;
 use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
+use bitcoin::sighash::EcdsaSighashType;
+use bitcoin::sighash::SighashCache;
 use bitcoin::transaction::Version;
+use bitcoin::{Block, OutPoint, PublicKey, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::{PubkeyHash, WPubkeyHash};
-use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
 use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
-use bitcoin::hashes::Hash as TraitImport;
+use rand::{thread_rng, Rng};
 
 pub fn p2pkh(pubkey: &Secp256k1PublicKey) -> ScriptBuf {
     Builder::new()
@@ -32,7 +39,7 @@ pub fn p2pkh(pubkey: &Secp256k1PublicKey) -> ScriptBuf {
 
 pub fn two_of_two_multisig_redeem_script(
     pubkey1: &Secp256k1PublicKey,
-    pubkey2: &Secp256k1PublicKey
+    pubkey2: &Secp256k1PublicKey,
 ) -> ScriptBuf {
     Builder::new()
         .push_int(2)
@@ -74,14 +81,14 @@ pub fn cltv_p2pkh(pubkey: &Secp256k1PublicKey, height_or_timestamp: i64) -> Scri
         .into_script()
 }
 
-pub fn csv_p2pkh(pubkey: &Secp256k1PublicKey, blocks_or_timestamp: i64) -> ScriptBuf {
+pub fn csv_p2pkh(pubkey: &Secp256k1PublicKey, height_or_timestamp: i64) -> ScriptBuf {
     Builder::new()
-        .push_int(blocks_or_timestamp)
+        .push_int(height_or_timestamp)
         .push_opcode(opcodes::OP_CSV)
         .push_opcode(opcodes::OP_DROP)
         .push_opcode(opcodes::OP_DUP)
         .push_opcode(opcodes::OP_HASH160)
-        .push_slice(PubkeyHash::hash(&pubkey.serialize()))
+        .push_slice(&PubkeyHash::hash(&pubkey.serialize()))
         .push_opcode(opcodes::OP_EQUALVERIFY)
         .push_opcode(opcodes::OP_CHECKSIG)
         .into_script()
@@ -93,23 +100,22 @@ pub fn payment_channel_funding_output(
     blocks_or_timestamp: i64,
 ) -> ScriptBuf {
     Builder::new()
-    .push_opcode(opcodes::OP_IF)
-    .push_script(two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey))
-    .push_opcode(opcodes::OP_ELSE)
-    .push_script(csv_p2pkh(alice_pubkey, blocks_or_timestamp))
-    .push_opcode(opcodes::OP_ENDIF)
-    .into_script()
+        .push_opcode(opcodes::OP_IF)
+        .push_script(two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey))
+        .push_opcode(opcodes::OP_ELSE)
+        .push_script(csv_p2pkh(alice_pubkey, blocks_or_timestamp))
+        .push_opcode(opcodes::OP_ENDIF)
+        .into_script()
 }
 
 pub fn build_funding_transaction(
     txins: Vec<TxIn>,
     alice_pubkey: &Secp256k1PublicKey,
     bob_pubkey: &Secp256k1PublicKey,
-    amount: Amount,
+    amount: u64,
 ) -> Transaction {
-    
     let output_script = two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey);
-    
+
     let txout = build_output(amount, output_script.to_p2wsh());
 
     Transaction {
@@ -129,24 +135,24 @@ pub fn build_htlc_commitment_transaction(
     remote_pubkey: &PublicKey,
     to_self_delay: i64,
     payment_hash160: &[u8; 20],
-    
-    ) -> Transaction {
-
+) -> Transaction {
     let htlc_offerer_script = build_htlc_offerer_witness_script(
-                                revocation_pubkey,
-                                remote_htlc_pubkey,
-                                local_htlc_pubkey,
-                                payment_hash160);
+        revocation_pubkey,
+        remote_htlc_pubkey,
+        local_htlc_pubkey,
+        payment_hash160,
+    );
 
-    let to_local_script = build_to_local_script(revocation_pubkey, to_local_delayed_pubkey, to_self_delay);
+    let to_local_script =
+        build_to_local_script(revocation_pubkey, to_local_delayed_pubkey, to_self_delay);
 
     let to_remote_script = build_to_remote_script(remote_pubkey);
 
-    let htlc_output = build_output(Amount::from_sat(400_000), htlc_offerer_script);
+    let htlc_output = build_output(390_000, htlc_offerer_script.to_p2wsh());
 
-    let local_output = build_output(Amount::from_sat(2_600_000), to_local_script);
+    let local_output = build_output(2_600_000, to_local_script.to_p2wsh());
 
-    let remote_output = build_output(Amount::from_sat(2_000_000), to_remote_script);
+    let remote_output = build_output(2_000_000, to_remote_script);
 
     Transaction {
         version: Version::TWO,
@@ -154,30 +160,58 @@ pub fn build_htlc_commitment_transaction(
         input: vec![funding_txin],
         output: vec![local_output, htlc_output, remote_output],
     }
+}
 
-    
+pub fn build_htlc_timeout_transaction(
+    funding_txin: TxIn,
+    revocation_pubkey: &Secp256k1PublicKey,
+    broadcaster_delayed_payment_key: &Secp256k1PublicKey,
+    contest_delay: i64,
+    cltv_expiry: u32,
+) -> Transaction {
+    let htlc_timeout_script = build_htlc_timeout_witness_script(
+        revocation_pubkey,
+        contest_delay,
+        broadcaster_delayed_payment_key,
+    );
 
+    let htlc_output = build_output(380_000, htlc_timeout_script.to_p2wsh());
+
+    Transaction {
+        version: Version::TWO,
+        lock_time: LockTime::from_consensus(cltv_expiry),
+        input: vec![funding_txin],
+        output: vec![htlc_output],
     }
+}
 
-pub fn build_to_local_script(revocation_key: &Secp256k1PublicKey, to_local_delayed_pubkey: &Secp256k1PublicKey, to_self_delay: i64) -> ScriptBuf {
+pub fn build_to_local_script(
+    revocation_key: &Secp256k1PublicKey,
+    to_local_delayed_pubkey: &Secp256k1PublicKey,
+    to_self_delay: i64,
+) -> ScriptBuf {
     Builder::new()
-    .push_opcode(opcodes::OP_IF)
-    .push_slice(revocation_key.serialize())
-    .push_opcode(opcodes::OP_ELSE)
-    .push_int(to_self_delay)
-    .push_opcode(opcodes::OP_CSV)
-    .push_opcode(opcodes::OP_DROP)
-    .push_slice(to_local_delayed_pubkey.serialize())
-    .push_opcode(opcodes::OP_ENDIF)
-    .push_opcode(opcodes::OP_CHECKSIG)
-    .into_script()
+        .push_opcode(opcodes::OP_IF)
+        .push_slice(revocation_key.serialize())
+        .push_opcode(opcodes::OP_ELSE)
+        .push_int(to_self_delay)
+        .push_opcode(opcodes::OP_CSV)
+        .push_opcode(opcodes::OP_DROP)
+        .push_slice(to_local_delayed_pubkey.serialize())
+        .push_opcode(opcodes::OP_ENDIF)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .into_script()
 }
 
 pub fn build_to_remote_script(remotepubkey: &PublicKey) -> ScriptBuf {
     ScriptBuf::new_p2wpkh(&remotepubkey.wpubkey_hash().unwrap())
 }
 
-pub fn block_connected(funding_output: ScriptBuf, channel_amount_sats: Amount, block: Block) -> bool {
+pub fn block_connected(
+    funding_output: ScriptBuf,
+    channel_amount_sats: Amount,
+    block: Block,
+) -> bool {
     todo!()
 }
 
@@ -243,6 +277,25 @@ pub fn build_htlc_offerer_witness_script(
         .push_opcode(opcodes::OP_EQUALVERIFY)
         .push_opcode(opcodes::OP_CHECKSIG)
         .push_opcode(opcodes::OP_ENDIF)
+        .push_opcode(opcodes::OP_ENDIF)
+        .into_script()
+}
+
+pub fn build_htlc_timeout_witness_script(
+    revocation_key: &Secp256k1PublicKey,
+    contest_delay: i64,
+    broadcaster_delayed_payment_key: &Secp256k1PublicKey,
+) -> ScriptBuf {
+    Builder::new()
+        .push_opcode(opcodes::OP_IF)
+        .push_slice(&revocation_key.serialize())
+        .push_opcode(opcodes::OP_ELSE)
+        .push_int(contest_delay)
+        .push_opcode(opcodes::OP_CSV)
+        .push_opcode(opcodes::OP_DROP)
+        .push_slice(&broadcaster_delayed_payment_key.serialize())
+        .push_opcode(opcodes::OP_ENDIF)
+        .push_opcode(opcodes::OP_CHECKSIG)
         .into_script()
 }
 
@@ -285,9 +338,9 @@ pub fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
 //);
 //}
 
-pub fn build_output(amount: Amount, output_script: ScriptBuf) -> TxOut {
+pub fn build_output(amount: u64, output_script: ScriptBuf) -> TxOut {
     TxOut {
-        value: amount,
+        value: Amount::from_sat(amount),
         script_pubkey: output_script,
     }
 }
@@ -297,10 +350,10 @@ pub fn build_timelocked_transaction(
     pubkey: &Secp256k1PublicKey,
     block_height: u32,
     csv_delay: i64,
-    amount: Amount,
+    amount: u64,
 ) -> Transaction {
     let output_script = csv_p2pkh(pubkey, csv_delay);
-    let txout = build_output(amount, output_script);
+    let txout = build_output(amount, output_script.to_p2wsh());
 
     Transaction {
         version: Version::ONE,
@@ -308,4 +361,177 @@ pub fn build_timelocked_transaction(
         input: txins,
         output: vec![txout],
     }
+}
+
+pub fn generate_p2wsh_signature(
+    transaction: Transaction,
+    input_idx: usize,
+    witness_script: &ScriptBuf,
+    value: u64,
+    sighash_type: EcdsaSighashType,
+    private_key: secp256k1::SecretKey,
+) -> Signature {
+    let secp = Secp256k1::new();
+
+    let message =
+        generate_p2wsh_message(transaction, input_idx, witness_script, value, sighash_type);
+    let signature = secp.sign_ecdsa(&message, &private_key);
+
+    signature
+}
+
+fn generate_p2wsh_message(
+    transaction: Transaction,
+    input_idx: usize,
+    witness_script: &ScriptBuf,
+    value: u64,
+    sighash_type: EcdsaSighashType,
+) -> Message {
+    let secp = Secp256k1::new();
+
+    let mut cache = SighashCache::new(&transaction);
+
+    let amount = Amount::from_sat(value);
+
+    let sighash = cache
+        .p2wsh_signature_hash(input_idx, &witness_script, amount, sighash_type)
+        .unwrap();
+
+    let message = Message::from_digest_slice(&sighash[..]).unwrap();
+
+    message
+}
+
+fn generate_payment_preimage() -> Sha256 {
+    let mut preimage = [0u8; 32];
+    thread_rng().fill_bytes(&mut preimage);
+
+    Sha256::hash(&preimage)
+}
+
+pub fn build_p2wpkh_transaction(txin: TxIn, pubkey: &PublicKey, amount: u64) -> Transaction {
+    let script = build_to_remote_script(&pubkey);
+
+    let output = build_output(amount, script);
+
+    Transaction {
+        version: Version::TWO,
+        lock_time: LockTime::ZERO,
+        input: vec![txin],
+        output: vec![output],
+    }
+}
+
+pub fn build_multisig_transaction(
+    tx_ins: Vec<TxIn>,
+    pubkey1: &Secp256k1PublicKey,
+    pubkey2: &Secp256k1PublicKey,
+    amount: u64,
+) -> Transaction {
+    let output_script = two_of_two_multisig_redeem_script(pubkey1, pubkey2);
+
+    let txout = build_output(amount, output_script.to_p2wsh());
+
+    let locktime = LockTime::ZERO;
+
+    let version = Version::ONE;
+
+    build_transaction(version, locktime, tx_ins, vec![txout])
+}
+
+pub fn build_csv_input(txid: String, vout: u32, block_delay: u32) -> TxIn {
+    let sequence = Sequence(block_delay);
+
+    let tx_in = build_unsigned_input(txid, vout, sequence);
+
+    tx_in
+}
+
+pub fn build_unsigned_input(txid: String, vout: u32, sequence: Sequence) -> TxIn {
+    let tx_id = txid_from_string(txid);
+
+    TxIn {
+        previous_output: OutPoint {
+            txid: tx_id,
+            vout: vout,
+        },
+        sequence: sequence,
+        script_sig: ScriptBuf::new(),
+        witness: Witness::new(),
+    }
+}
+
+fn txid_from_string(txid: String) -> Txid {
+    // Get an unspent output to spend
+    let mut tx_id_bytes = hex::decode(txid).expect("Valid hex string");
+    tx_id_bytes.reverse();
+    let input_txid = Txid::from_byte_array(tx_id_bytes.try_into().expect("Expected 32 bytes"));
+
+    input_txid
+}
+
+pub fn build_transaction(
+    version: Version,
+    locktime: LockTime,
+    tx_ins: Vec<TxIn>,
+    tx_outs: Vec<TxOut>,
+) -> Transaction {
+    Transaction {
+        version: version,
+        lock_time: locktime,
+        input: tx_ins,
+        output: tx_outs,
+    }
+}
+
+pub fn generate_multisig_signature(
+    transaction: Transaction,
+    input_idx: usize,
+    witness_script: &ScriptBuf,
+    value: u64,
+    private_key: secp256k1::SecretKey,
+) -> Signature {
+    
+    let secp = Secp256k1::new();
+
+    // define sighash type
+    let sighash_type = EcdsaSighashType::All;
+
+    // generate message
+    let message =
+        generate_p2wsh_message(transaction, input_idx, witness_script, value, sighash_type);
+
+    // generate signature
+    let signature = secp.sign_ecdsa(&message, &private_key);
+
+    signature
+}
+
+pub fn generate_p2wsh_multisig_witness(
+    signature1: Vec<u8>,
+    signature2: Vec<u8>,
+    redeem_script: &ScriptBuf,
+    mut tx: Transaction,
+    ) -> Transaction {
+
+    // Determine signature order based on pubkey comparison
+    let sig1_first = signature1 > signature2;
+
+    // First push empty element for NULLDUMMY compliance
+    tx.input[0].witness.push(Vec::new());
+
+    // Push signatures in correct order
+    if sig1_first {
+        tx.input[0].witness.push(signature1);
+        tx.input[0].witness.push(signature2);
+    } else {
+        tx.input[0].witness.push(signature2);
+        tx.input[0].witness.push(signature1);
+    }
+
+    tx.input[0]
+        .witness
+        .push(redeem_script.clone().into_bytes());
+
+    tx
 }
