@@ -57,7 +57,7 @@ pub async fn spend_timelock_tx(bitcoind: BitcoindClient,
                                 output_amount: u64) {
 
     // get utxo
-    let txid = "75607cf4f4c5c63391766c8864daacc1723450fd4afdfdb7b6a75714c5528178";
+    let txid = "8bd0661d0e084c822222f0684d1d2a5efaad76cfc5703812801c1fa677fc67ae";
     let txid_index = 0;
     let sequence = Sequence(14);
     let txin = build_unsigned_input(txid.to_string(), txid_index, sequence);
@@ -65,9 +65,9 @@ pub async fn spend_timelock_tx(bitcoind: BitcoindClient,
     // get a public key to lock funds to
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
 
-    let output_script = our_public_key.p2wpkh_script_code().unwrap();
+    let pubkey_hash = our_public_key.wpubkey_hash().unwrap();
 
-    let txout = build_output(output_amount, output_script.to_p2wsh());
+    let txout = build_output(output_amount, ScriptBuf::new_p2wpkh(&pubkey_hash));
 
     let version = Version::TWO;
     let locktime = LockTime::ZERO;

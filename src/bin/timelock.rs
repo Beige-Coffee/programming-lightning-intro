@@ -50,7 +50,6 @@ use bitcoin::PublicKey;
 use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction};
 
 pub async fn create_timelock_tx(bitcoind: BitcoindClient,
-                                utxo: ListUnspentUtxo,
                                 tx_input: TxIn,
                                 tx_out_amount: u64) {
 
@@ -59,7 +58,6 @@ pub async fn create_timelock_tx(bitcoind: BitcoindClient,
 
     // define a csv delay for the output
     let csv_delay: i64 = 14;
-
     let version = Version::ONE;
     let locktime = LockTime::ZERO;
 
@@ -82,22 +80,11 @@ async fn main() {
     let bitcoind = get_bitcoind_client().await;
 
     // get an unspent output for funding transaction
-    let utxo = get_unspent_output(bitcoind.clone()).await;
+    let tx_input = get_unspent_output(bitcoind.clone()).await;
 
     let tx_in_amount = 4_999_800;
 
-    // define UTXO
-    let tx_input = TxIn {
-        previous_output: OutPoint {
-            txid: utxo.txid,
-            vout: utxo.vout,
-        },
-        sequence: Sequence::MAX,
-        script_sig: ScriptBuf::new(),
-        witness: Witness::new(),
-    };
-
-    create_timelock_tx(bitcoind, utxo, tx_input, tx_in_amount).await;
+    create_timelock_tx(bitcoind, tx_input, tx_in_amount).await;
 
     // Add a delay to allow the spawned task to complete
     sleep(Duration::from_secs(2)).await;

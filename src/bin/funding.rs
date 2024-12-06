@@ -1,4 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+pub mod helper;
 use base64;
 use bitcoin::address::Address;
 use bitcoin::amount::Amount;
@@ -46,14 +47,15 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use bitcoin::PublicKey;
+use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction};
 
-pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
+pub async fn build_funding_tx(bitcoind: BitcoindClient,
                                         tx_input: TxIn,
                                         tx_in_amount: u64) {
 
     // we're locking to a 2-of-2 multisig, so we need two public keys
     // normally, we would generate our own public key
-    //   and the counterparty would send us their
+    //   and the counterparty would send us theirs
     let our_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
     let counterparty_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
 
@@ -70,9 +72,6 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
 
     println!("Tx Hex: {}", serialize_hex(&signed_tx));
     println!("Tx ID: {}", signed_tx.compute_txid());
-
-    // broadcast transaction
-    bitcoind.broadcast_transactions(&[&signed_tx]);
 }
 
 #[tokio::main]
@@ -82,65 +81,13 @@ async fn main() {
     let bitcoind = get_bitcoind_client().await;
 
     // get an unspent output for funding transaction
-    let utxo = get_unspent_output(bitcoind.clone()).await;
-
-    // Create a transaction spending this UTXO
-    let tx_input = TxIn {
-        previous_output: OutPoint {
-            txid: utxo.txid,
-            vout: utxo.vout,
-        },
-        sequence: Sequence::MAX,
-        script_sig: ScriptBuf::new(),
-        witness: Witness::new(),
-    };
+    let tx_input = get_unspent_output(bitcoind.clone()).await;
 
     let tx_in_amount = 4_999_800;
     
-    create_broadcast_funding_tx(bitcoind, tx_input, tx_in_amount).await;
+        build_funding_tx(bitcoind, tx_input, tx_in_amount).await;
 
     // Add a delay to allow the spawned task to complete
     sleep(Duration::from_secs(2)).await;
 }
 
-pub async fn get_bitcoind_client() -> BitcoindClient {
-    let bitcoind = BitcoindClient::new(
-        "0.0.0.0".to_string(),
-        18443,
-        "bitcoind".to_string(),
-        "bitcoind".to_string(),
-        Network::Regtest,
-    )
-    .await
-    .unwrap();
-
-    bitcoind
-}
-
-pub async fn get_unspent_output(bitcoind: BitcoindClient) -> ListUnspentUtxo {
-    let utxos = bitcoind.list_unspent().await;
-    let utxo = utxos
-        .0
-        .iter()
-        .find(|utxo| utxo.amount > 4_999_999 && utxo.amount < 6_000_000)
-        .expect("No UTXOs with positive balance found");
-
-    utxo.clone()
-}
-
-pub async fn sign_raw_transaction(bitcoind: BitcoindClient,
-                                  tx: Transaction) -> Transaction {
-
-    // we need to serialize the tx before passing it into
-    //    `sign_raw_transaction_with_wallet`
-    let tx_hex = serialize_hex(&tx);
-
-    // sign the transaction
-    let signed_tx = bitcoind.sign_raw_transaction_with_wallet(tx_hex).await;
-
-    // convert signed transaction hex into a Transaction type
-    let final_tx: Transaction =
-        encode::deserialize(&hex_utils::to_vec(&signed_tx.hex).unwrap()).unwrap();
-
-    final_tx
-}

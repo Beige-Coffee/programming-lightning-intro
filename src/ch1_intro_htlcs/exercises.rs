@@ -114,16 +114,22 @@ pub fn build_funding_transaction(
     bob_pubkey: &Secp256k1PublicKey,
     amount: u64,
 ) -> Transaction {
+    
     let output_script = two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey);
 
     let txout = build_output(amount, output_script.to_p2wsh());
 
-    Transaction {
-        version: Version::TWO,
-        lock_time: LockTime::ZERO,
-        input: txins,
-        output: vec![txout],
-    }
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO;
+
+    let tx = build_transaction(
+        version,
+        locktime,
+        txins,
+        vec![txout],
+    );
+
+    tx
 }
 
 pub fn build_htlc_commitment_transaction(
@@ -132,9 +138,12 @@ pub fn build_htlc_commitment_transaction(
     remote_htlc_pubkey: &Secp256k1PublicKey,
     local_htlc_pubkey: &Secp256k1PublicKey,
     to_local_delayed_pubkey: &Secp256k1PublicKey,
-    remote_pubkey: &PublicKey,
+    remote_pubkey: &Secp256k1PublicKey,
     to_self_delay: i64,
     payment_hash160: &[u8; 20],
+    htlc_amount: u64,
+    local_amount: u64,
+    remote_amount: u64,
 ) -> Transaction {
     let htlc_offerer_script = build_htlc_offerer_witness_script(
         revocation_pubkey,
@@ -144,22 +153,25 @@ pub fn build_htlc_commitment_transaction(
     );
 
     let to_local_script =
-        build_to_local_script(revocation_pubkey, to_local_delayed_pubkey, to_self_delay);
+        to_local(revocation_pubkey, to_local_delayed_pubkey, to_self_delay);
 
-    let to_remote_script = build_to_remote_script(remote_pubkey);
+    let to_remote_script = p2wpkh_output_script(remote_pubkey);
 
-    let htlc_output = build_output(390_000, htlc_offerer_script.to_p2wsh());
+    let htlc_output = build_output(htlc_amount, htlc_offerer_script.to_p2wsh());
 
-    let local_output = build_output(2_600_000, to_local_script.to_p2wsh());
+    let local_output = build_output(local_amount, to_local_script.to_p2wsh());
 
-    let remote_output = build_output(2_000_000, to_remote_script);
+    let remote_output = build_output(remote_amount, to_remote_script);
 
-    Transaction {
-        version: Version::TWO,
-        lock_time: LockTime::ZERO,
-        input: vec![funding_txin],
-        output: vec![local_output, htlc_output, remote_output],
-    }
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO:
+
+    let tx = build_transaction(version,
+                               locktime,
+                               vec![funding_txin],
+                            vec![local_output, htlc_output, remote_output]);
+
+    tx
 }
 
 pub fn build_htlc_timeout_transaction(
@@ -168,24 +180,29 @@ pub fn build_htlc_timeout_transaction(
     broadcaster_delayed_payment_key: &Secp256k1PublicKey,
     contest_delay: i64,
     cltv_expiry: u32,
+    htlc_amount: u64,
 ) -> Transaction {
-    let htlc_timeout_script = build_htlc_timeout_witness_script(
+    let htlc_timeout_script = to_local(
         revocation_pubkey,
-        contest_delay,
         broadcaster_delayed_payment_key,
+        contest_delay,
     );
 
-    let htlc_output = build_output(380_000, htlc_timeout_script.to_p2wsh());
+    let htlc_output = build_output(htlc_amount, htlc_timeout_script.to_p2wsh());
 
-    Transaction {
-        version: Version::TWO,
-        lock_time: LockTime::from_consensus(cltv_expiry),
-        input: vec![funding_txin],
-        output: vec![htlc_output],
-    }
+    let version = Version::TWO;
+    let locktime = LockTime::from_consensus(cltv_expiry);
+
+    let tx = build_transaction(
+                version,
+                locktime,
+                vec![funding_txin],
+                vec![htlc_output]);
+
+    tx
 }
 
-pub fn build_to_local_script(
+pub fn to_local(
     revocation_key: &Secp256k1PublicKey,
     to_local_delayed_pubkey: &Secp256k1PublicKey,
     to_self_delay: i64,
@@ -339,6 +356,7 @@ pub fn channel_closed(funding_outpoint: OutPoint, block: Block) -> bool {
 //}
 
 pub fn build_output(amount: u64, output_script: ScriptBuf) -> TxOut {
+    
     TxOut {
         value: Amount::from_sat(amount),
         script_pubkey: output_script,
@@ -511,27 +529,85 @@ pub fn generate_p2wsh_multisig_witness(
     signature1: Vec<u8>,
     signature2: Vec<u8>,
     redeem_script: &ScriptBuf,
-    mut tx: Transaction,
-    ) -> Transaction {
-
-    // Determine signature order based on pubkey comparison
-    let sig1_first = signature1 > signature2;
+    mut witness: Witness,
+    ) -> Witness {
 
     // First push empty element for NULLDUMMY compliance
-    tx.input[0].witness.push(Vec::new());
+    witness.push(Vec::new());
+
+    // Determine signature order based on pubkey comparison
+    let sig1_first = signature1 < signature2;
 
     // Push signatures in correct order
     if sig1_first {
-        tx.input[0].witness.push(signature1);
-        tx.input[0].witness.push(signature2);
+        witness.push(signature1);
+        witness.push(signature2);
     } else {
-        tx.input[0].witness.push(signature2);
-        tx.input[0].witness.push(signature1);
+        witness.push(signature2);
+        witness.push(signature1);
     }
 
-    tx.input[0]
-        .witness
-        .push(redeem_script.clone().into_bytes());
+    witness.push(redeem_script.clone().into_bytes());
 
+    witness
+}
+
+pub fn build_refund_transaction(
+    funding_txin: TxIn,
+    alice_pubkey: Secp256k1PublicKey,
+    bob_pubkey: Secp256k1PublicKey,
+    alice_balance: u64,
+    bob_balance: u64
+) -> Transaction {
+
+    let alice_script = p2wpkh_output_script(alice_pubkey);
+
+    let bob_script = p2wpkh_output_script(bob_pubkey);
+
+    let alice_output = build_output(alice_balance, alice_script);
+
+    let bob_output = build_output(bob_balance, bob_script);
+
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO;
+
+    let tx = build_transaction(version,
+                      locktime,
+                      vec![funding_txin],
+                      vec![alice_output, bob_output]);
     tx
+}
+
+pub fn build_commitment_transaction(
+    funding_txin: TxIn,
+    revocation_pubkey: &Secp256k1PublicKey,
+    to_local_delayed_pubkey: &Secp256k1PublicKey,
+    remote_pubkey: Secp256k1PublicKey,
+    to_self_delay: i64,
+    local_amount: u64,
+    remote_amount: u64,
+) -> Transaction {
+
+    let to_local_script =
+        to_local(revocation_pubkey, to_local_delayed_pubkey, to_self_delay);
+
+    let to_remote_script = p2wpkh_output_script(remote_pubkey);
+
+    let local_output = build_output(local_amount, to_local_script.to_p2wsh());
+
+    let remote_output = build_output(remote_amount, to_remote_script);
+
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO;
+
+    let tx = build_transaction(version,
+                      locktime,
+                      vec![funding_txin],
+                      vec![local_output, remote_output]);
+    tx
+    }
+
+pub fn p2wpkh_output_script(public_key: Secp256k1PublicKey) -> ScriptBuf {
+    let pubkey = PublicKey::new(public_key);
+    ScriptBuf::new_p2wpkh(&pubkey.wpubkey_hash().unwrap())
 }

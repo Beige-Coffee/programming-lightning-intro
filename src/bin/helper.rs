@@ -24,7 +24,7 @@ pub async fn get_bitcoind_client() -> BitcoindClient {
   bitcoind
 }
 
-pub async fn get_unspent_output(bitcoind: BitcoindClient) -> ListUnspentUtxo {
+pub async fn get_unspent_output(bitcoind: BitcoindClient) -> TxIn {
   let utxos = bitcoind.list_unspent().await;
   let utxo = utxos
       .0
@@ -32,7 +32,17 @@ pub async fn get_unspent_output(bitcoind: BitcoindClient) -> ListUnspentUtxo {
       .find(|utxo| utxo.amount > 4_999_999 && utxo.amount < 6_000_000)
       .expect("No UTXOs with positive balance found");
 
-  utxo.clone()
+    let tx_input = TxIn {
+        previous_output: OutPoint {
+            txid: utxo.txid,
+            vout: utxo.vout,
+        },
+        sequence: Sequence::MAX,
+        script_sig: ScriptBuf::new(),
+        witness: Witness::new(),
+    };
+
+    tx_input
 }
 
 pub async fn sign_raw_transaction(bitcoind: BitcoindClient,
@@ -65,7 +75,7 @@ pub fn get_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
             txid: input_txid,
             vout: vout as u32,
         },
-        sequence: Sequence::from_height(14),
+        sequence: Sequence::MAX,
         script_sig: ScriptBuf::new(),
         witness: Witness::new(),
     }
