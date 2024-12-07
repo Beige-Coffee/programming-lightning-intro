@@ -7,6 +7,15 @@ alias newaddress='bcli getnewaddress "" "bech32"'
 # an alias for getting a new address from core
 alias listunspent='bcli listunspent'
 
+# an alias for broadcasting a transaction
+alias sendtx='bcli sendrawtransaction'
+
+# an alias for decoding a transaction
+alias decodetx='bcli decoderawtransaction'
+
+# an alias for decoding a transaction
+alias getutxo='bcli gettxout'
+
 # usage: mine x
 # where x is the number of blocks to mine
 # useful when opening channels and you need to get the funding tx confirmed
