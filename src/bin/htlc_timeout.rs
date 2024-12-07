@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use base64;
+pub mod helper;
 use bitcoin::address::Address;
 use bitcoin::amount::Amount;
 use bitcoin::blockdata::block::Block;
@@ -54,46 +55,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use hex;
+use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, get_htlc_funding_input, get_arg};
 
 /// hash160 of the empty string
 const HASH160_DUMMY: [u8; 20] = [
     0xb4, 0x72, 0xa2, 0x66, 0xd0, 0xbd, 0x89, 0xc1, 0x37, 0x06, 0xa4, 0x13, 0x2c, 0xcf, 0xb1, 0x6f,
     0x7c, 0x3b, 0x9f, 0xcb,
 ];
-
-pub async fn get_bitcoind_client() -> BitcoindClient {
-    let bitcoind = BitcoindClient::new(
-        "0.0.0.0".to_string(),
-        18443,
-        "bitcoind".to_string(),
-        "bitcoind".to_string(),
-        Network::Regtest,
-    )
-    .await
-    .unwrap();
-
-    bitcoind
-}
-
-fn get_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
-
-    // Get an unspent output to spend
-    let mut tx_id_bytes = hex::decode(input_tx_id_str).expect("Valid hex string");
-    tx_id_bytes.reverse();
-    let input_txid = Txid::from_byte_array(tx_id_bytes.try_into().expect("Expected 32 bytes"));
-
-    // Create a transaction spending this UTXO
-    TxIn {
-        previous_output: OutPoint {
-            txid: input_txid,
-            vout: vout as u32,
-        },
-        sequence: Sequence(0),
-        script_sig: ScriptBuf::new(),
-        witness: Witness::new(),
-    }
-
-}
 
 pub struct KeyManager{
     pub funding_private_key: SecretKey,
@@ -106,17 +74,18 @@ pub struct KeyManager{
 }
 
 pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
+                                         txid: String,
                                         our_key_manager: KeyManager,
                                         counterparty_key_manager: KeyManager) {
 
-    let txid = "0ae6a545cca1aef90e64707513ab67074c506a8668a6aa5853c56126e2e5ea23";
     let txid_index = 1;
-    let funding_txin = get_funding_input(txid.to_string(), txid_index);
+    let funding_txin = get_htlc_funding_input(txid.to_string(), txid_index);
     let funding_amount = 390_000;
 
     let payment_hash160 = HASH160_DUMMY;
     let to_self_delay: i64 = 144;
     let cltv_expiry: u32 = 300;
+    let htlc_amount = 350_000;
 
 
     let tx = build_htlc_timeout_transaction(
@@ -124,7 +93,8 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
         &our_key_manager.revocation_pubkey,
         &our_key_manager.delayed_pubkey,
         to_self_delay,
-        cltv_expiry
+        cltv_expiry,
+        htlc_amount
         );
 
     // Prepare the redeem script for signing (e.g., P2PKH or P2WPKH)
@@ -177,9 +147,10 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
         .witness
         .push(redeem_script.clone().into_bytes());
 
-    println!("final_tx Tx: {}", serialize_hex(&signed_tx));
-
+    println!("\n");
     println!("Tx ID: {}", signed_tx.compute_txid());
+    println!("\n");
+    println!("Tx Hex: {}", serialize_hex(&signed_tx));
 
     // Broadcast it
     //bitcoind.broadcast_transactions(&[&signed_tx]);
@@ -190,6 +161,9 @@ async fn main() {
 
     // get bitcoin client
     let bitcoind = get_bitcoind_client().await;
+
+    // Parse the argument as txid
+    let txid = get_arg();
 
     // Get our keys
     let our_funding_private_key = secp256k1_private_key(&[0x01; 32]);
@@ -229,7 +203,7 @@ async fn main() {
             revocation_pubkey: counterparty_revocation_key,
         };
 
-    create_broadcast_funding_tx(bitcoind, our_key_manager, counterparty_key_manager).await;
+    create_broadcast_funding_tx(bitcoind, txid, our_key_manager, counterparty_key_manager).await;
 
     // Add a delay to allow the spawned task to complete
     sleep(Duration::from_secs(2)).await;

@@ -69,9 +69,10 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
 
     let signed_tx = sign_raw_transaction(bitcoind.clone(), tx).await;
 
-
-    println!("Tx Hex: {}", serialize_hex(&signed_tx));
+    println!("\n");
     println!("Tx ID: {}", signed_tx.compute_txid());
+    println!("\n");
+    println!("Tx Hex: {}", serialize_hex(&signed_tx));
 }
 
 #[tokio::main]

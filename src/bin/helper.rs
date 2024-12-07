@@ -9,6 +9,7 @@ use bitcoin::consensus::{encode};
 use bitcoin::{OutPoint, Sequence, TxIn, Witness};
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::Hash;
+use std::env;
 
 pub async fn get_bitcoind_client() -> BitcoindClient {
   let bitcoind = BitcoindClient::new(
@@ -82,6 +83,26 @@ pub fn get_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
 
 }
 
+pub fn get_htlc_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
+
+    // Get an unspent output to spend
+    let mut tx_id_bytes = hex::decode(input_tx_id_str).expect("Valid hex string");
+    tx_id_bytes.reverse();
+    let input_txid = Txid::from_byte_array(tx_id_bytes.try_into().expect("Expected 32 bytes"));
+
+    // Create a transaction spending this UTXO
+    TxIn {
+        previous_output: OutPoint {
+            txid: input_txid,
+            vout: vout as u32,
+        },
+        sequence: Sequence(0),
+        script_sig: ScriptBuf::new(),
+        witness: Witness::new(),
+    }
+
+}
+
 pub fn build_unsigned_input(txid: String, vout: u32, sequence: Sequence) -> TxIn {
 
     // Get an unspent output to spend
@@ -98,5 +119,27 @@ pub fn build_unsigned_input(txid: String, vout: u32, sequence: Sequence) -> TxIn
         script_sig: ScriptBuf::new(),
         witness: Witness::new(),
     }
+}
+
+pub fn get_arg() -> String {
+    // Collect command-line arguments
+    let args: Vec<String> = env::args().collect();
+
+    // Ensure the correct number of arguments
+    if args.len() < 2 {
+        eprintln!("Make sure to include the <txid>!");
+        std::process::exit(1);
+    }
+
+    // Parse the second argument as txid
+    let txid = &args[1];
+
+    // Validate if txid is a valid hex string
+    if txid.len() % 2 != 0 {
+        eprintln!("Error: txid must be a valid hexadecimal string of even length.");
+        std::process::exit(1);
+    }
+
+    txid.to_string()
 }
 

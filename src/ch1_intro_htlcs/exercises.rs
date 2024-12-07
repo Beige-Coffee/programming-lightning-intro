@@ -5,7 +5,7 @@ use bitcoin::amount::Amount;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
-use bitcoin::hashes::sha256::Hash as Sha256;
+use sha2::{Sha256, Digest};
 use bitcoin::hashes::Hash;
 use bitcoin::hashes::Hash as TraitImport;
 use bitcoin::locktime::absolute::LockTime;
@@ -94,6 +94,19 @@ pub fn csv_p2pkh(pubkey: &Secp256k1PublicKey, height_or_timestamp: i64) -> Scrip
         .into_script()
 }
 
+pub fn timelocked_p2pkh(pubkey: &Secp256k1PublicKey, height_or_timestamp: i64) -> ScriptBuf {
+    Builder::new()
+        .push_int(height_or_timestamp)
+        .push_opcode(opcodes::OP_CSV)
+        .push_opcode(opcodes::OP_DROP)
+        .push_opcode(opcodes::OP_DUP)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_slice(&PubkeyHash::hash(&pubkey.serialize()))
+        .push_opcode(opcodes::OP_EQUALVERIFY)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .into_script()
+}
+
 pub fn payment_channel_funding_output(
     alice_pubkey: &Secp256k1PublicKey,
     bob_pubkey: &Secp256k1PublicKey,
@@ -138,7 +151,7 @@ pub fn build_htlc_commitment_transaction(
     remote_htlc_pubkey: &Secp256k1PublicKey,
     local_htlc_pubkey: &Secp256k1PublicKey,
     to_local_delayed_pubkey: &Secp256k1PublicKey,
-    remote_pubkey: &Secp256k1PublicKey,
+    remote_pubkey: Secp256k1PublicKey,
     to_self_delay: i64,
     payment_hash160: &[u8; 20],
     htlc_amount: u64,
@@ -164,7 +177,7 @@ pub fn build_htlc_commitment_transaction(
     let remote_output = build_output(remote_amount, to_remote_script);
 
     let version = Version::TWO;
-    let locktime = LockTime::ZERO:
+    let locktime = LockTime::ZERO;
 
     let tx = build_transaction(version,
                                locktime,
@@ -418,13 +431,6 @@ fn generate_p2wsh_message(
     let message = Message::from_digest_slice(&sighash[..]).unwrap();
 
     message
-}
-
-fn generate_payment_preimage() -> Sha256 {
-    let mut preimage = [0u8; 32];
-    thread_rng().fill_bytes(&mut preimage);
-
-    Sha256::hash(&preimage)
 }
 
 pub fn build_p2wpkh_transaction(txin: TxIn, pubkey: &PublicKey, amount: u64) -> Transaction {

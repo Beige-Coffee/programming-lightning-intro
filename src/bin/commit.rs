@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use base64;
+pub mod helper;
 use bitcoin::address::Address;
 use bitcoin::amount::Amount;
 use bitcoin::blockdata::block::Block;
@@ -36,7 +37,7 @@ use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use pl_00_intro::ch1_intro_htlcs::exercises::{
-    build_htlc_commitment_transaction, two_of_two_multisig_redeem_script,generate_p2wsh_signature
+    build_htlc_commitment_transaction, build_commitment_transaction, two_of_two_multisig_redeem_script,generate_p2wsh_signature, build_refund_transaction
 };
 use bitcoin::PublicKey as BitcoinPubKey;
 use pl_00_intro::internal::bitcoind_client;
@@ -53,79 +54,104 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use hex;
+use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, get_funding_input, get_arg};
 
-/// hash160 of the empty string
-const HASH160_DUMMY: [u8; 20] = [
-    0xb4, 0x72, 0xa2, 0x66, 0xd0, 0xbd, 0x89, 0xc1, 0x37, 0x06, 0xa4, 0x13, 0x2c, 0xcf, 0xb1, 0x6f,
-    0x7c, 0x3b, 0x9f, 0xcb,
-];
-
-pub async fn get_bitcoind_client() -> BitcoindClient {
-    let bitcoind = BitcoindClient::new(
-        "0.0.0.0".to_string(),
-        18443,
-        "bitcoind".to_string(),
-        "bitcoind".to_string(),
-        Network::Regtest,
-    )
-    .await
-    .unwrap();
-
-    bitcoind
-}
-
-fn get_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
-
-    // Get an unspent output to spend
-    let mut tx_id_bytes = hex::decode(input_tx_id_str).expect("Valid hex string");
-    tx_id_bytes.reverse();
-    let input_txid = Txid::from_byte_array(tx_id_bytes.try_into().expect("Expected 32 bytes"));
-
-    // Create a transaction spending this UTXO
-    TxIn {
-        previous_output: OutPoint {
-            txid: input_txid,
-            vout: vout as u32,
-        },
-        sequence: Sequence::MAX,
-        script_sig: ScriptBuf::new(),
-        witness: Witness::new(),
-    }
-
-}
 
 pub struct KeyManager{
     pub funding_private_key: SecretKey,
     pub funding_public_key: PublicKey,
-    pub htlc_pubkey: PublicKey,
     pub delayed_pubkey: PublicKey,
-    pub pubkey: BitcoinPubKey,
+    pub commitment_pubkey: PublicKey,
     pub revocation_pubkey: PublicKey,
 }
 
 pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
+                                        txid: String,
                                         our_key_manager: KeyManager,
-                                        counterparty_key_manager: KeyManager) {
+                                        counterparty_key_manager: KeyManager,
+                                        funding_amount: u64,
+                                        our_balance: u64,
+                                        counterparty_balance: u64) {
 
-    let txid = "fb92aed02ae6faceaab603ff40e2b5974c7534fc8cec00d57e77a2d6d95ad006";
     let txid_index = 0;
+    let to_self_delay = 144;
     let funding_txin = get_funding_input(txid.to_string(), txid_index);
-    let funding_amount = 4_999_800;
 
-    let payment_hash160 = HASH160_DUMMY;
-    let to_self_delay: i64 = 144;
-
-
-    let tx = build_htlc_commitment_transaction(
+    let tx = build_commitment_transaction(
         funding_txin,
         &our_key_manager.revocation_pubkey,
-        &counterparty_key_manager.htlc_pubkey,
-        &our_key_manager.htlc_pubkey,
         &our_key_manager.delayed_pubkey,
-        &counterparty_key_manager.pubkey,
+        counterparty_key_manager.commitment_pubkey,
         to_self_delay,
-        &payment_hash160);
+        our_balance,
+        counterparty_balance);
 
+    let signed_tx = sign_funding_transaction(tx, our_key_manager, counterparty_key_manager);
+
+    println!("\n");
+    println!("Tx ID: {}", signed_tx.compute_txid());
+    println!("\n");
+    println!("Tx Hex: {}", serialize_hex(&signed_tx));
+
+}
+
+#[tokio::main]
+async fn main() {
+
+    // Parse the argument as txid
+    let txid = get_arg();
+
+    // get bitcoin client
+    let bitcoind = get_bitcoind_client().await;
+
+    // Get our keys
+    let our_funding_private_key = secp256k1_private_key(&[0x01; 32]);
+    let our_funding_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
+    let our_commitment_pubkey = secp256k1_pubkey_from_private_key(&[0x11; 32]);
+    let our_revocation_pubkey = secp256k1_pubkey_from_private_key(&[0x12; 32]);
+    let our_delayed_pubkey = secp256k1_pubkey_from_private_key(&[0x13; 32]);
+
+    let our_key_manager = KeyManager{
+            funding_private_key: our_funding_private_key,
+            funding_public_key: our_funding_public_key,
+            delayed_pubkey: our_delayed_pubkey,
+            commitment_pubkey: our_commitment_pubkey,
+            revocation_pubkey: our_revocation_pubkey
+        };
+
+    // Get our Counterparty Pubkey
+    let counterparty_funding_private_key = secp256k1_private_key(&[0x02; 32]);
+    let counterparty_funding_public_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+    let counterparty_commitment_pubkey = secp256k1_pubkey_from_private_key(&[0x21; 32]);
+    let counterparty_revocation_pubkey = secp256k1_pubkey_from_private_key(&[0x22; 32]);
+    let counterparty_delayed_pubkey = secp256k1_pubkey_from_private_key(&[0x23; 32]);
+
+    let counterparty_key_manager = KeyManager{
+            funding_private_key: counterparty_funding_private_key,
+            funding_public_key: counterparty_funding_public_key,
+            delayed_pubkey: counterparty_delayed_pubkey,
+            commitment_pubkey: counterparty_commitment_pubkey,
+            revocation_pubkey: counterparty_revocation_pubkey
+        };
+    
+    let funding_amount = 4_999_800;
+    let our_balance = 4_900_800;
+    let counterparty_balance = 355;
+    
+    create_broadcast_funding_tx(bitcoind, txid.clone(), our_key_manager, counterparty_key_manager, funding_amount,
+                               our_balance, counterparty_balance).await;
+
+    // Add a delay to allow the spawned task to complete
+    sleep(Duration::from_secs(2)).await;
+}
+
+pub fn sign_funding_transaction(tx: Transaction,
+                                our_key_manager: KeyManager,
+                               counterparty_key_manager: KeyManager)-> Transaction {
+
+    let funding_amount = 4_999_800;
+    let txid_index = 0;
+    
     // Prepare the redeem script for signing (e.g., P2PKH or P2WPKH)
     let redeem_script =
         two_of_two_multisig_redeem_script(
@@ -177,56 +203,5 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
         .witness
         .push(redeem_script.clone().into_bytes());
 
-    println!("final_tx Tx: {}", serialize_hex(&signed_tx));
-
-    println!("Tx ID: {}", signed_tx.compute_txid());
-
-    // Broadcast it
-    bitcoind.broadcast_transactions(&[&signed_tx]);
-}
-
-#[tokio::main]
-async fn main() {
-
-    // get bitcoin client
-    let bitcoind = get_bitcoind_client().await;
-
-    // Get our keys
-    let our_funding_private_key = secp256k1_private_key(&[0x01; 32]);
-    let our_funding_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
-    let local_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x11; 32]);
-    let revocation_pubkey = secp256k1_pubkey_from_private_key(&[0x12; 32]);
-    let to_local_delayed_pubkey = secp256k1_pubkey_from_private_key(&[0x13; 32]);
-    let local_pubkey = pubkey_from_private_key(&[0x14; 32]);
-
-    let our_key_manager = KeyManager{
-            funding_private_key: our_funding_private_key,
-            funding_public_key: our_funding_public_key,
-            htlc_pubkey: local_htlc_pubkey,
-            delayed_pubkey: to_local_delayed_pubkey,
-            pubkey: local_pubkey,
-            revocation_pubkey: revocation_pubkey,
-        };
-
-    // Get our Counterparty Pubkey
-    let counterparty_funding_private_key = secp256k1_private_key(&[0x02; 32]);
-    let counterparty_funding_public_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
-    let counterparty_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x21; 32]);
-    let counterparty_pubkey = pubkey_from_private_key(&[0x22; 32]);
-    let counterparty_delayed_key = secp256k1_pubkey_from_private_key(&[0x23; 32]);
-    let counterparty_revocation_key = secp256k1_pubkey_from_private_key(&[0x24; 32]);
-
-    let counterparty_key_manager = KeyManager{
-            funding_private_key: counterparty_funding_private_key,
-            funding_public_key: counterparty_funding_public_key,
-            htlc_pubkey: counterparty_htlc_pubkey,
-            delayed_pubkey: counterparty_delayed_key,
-            pubkey: counterparty_pubkey,
-            revocation_pubkey: counterparty_revocation_key,
-        };
-
-    create_broadcast_funding_tx(bitcoind, our_key_manager, counterparty_key_manager).await;
-
-    // Add a delay to allow the spawned task to complete
-    sleep(Duration::from_secs(2)).await;
+    signed_tx
 }
