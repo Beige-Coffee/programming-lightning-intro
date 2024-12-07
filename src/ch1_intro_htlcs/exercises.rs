@@ -182,7 +182,7 @@ pub fn build_htlc_commitment_transaction(
     let tx = build_transaction(version,
                                locktime,
                                vec![funding_txin],
-                            vec![local_output, htlc_output, remote_output]);
+                            vec![local_output, remote_output, htlc_output]);
 
     tx
 }

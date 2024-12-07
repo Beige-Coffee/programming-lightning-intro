@@ -78,7 +78,7 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
                                         our_key_manager: KeyManager,
                                         counterparty_key_manager: KeyManager) {
 
-    let txid_index = 1;
+    let txid_index = 2;
     let funding_txin = get_htlc_funding_input(txid.to_string(), txid_index);
     let funding_amount = 390_000;
 
