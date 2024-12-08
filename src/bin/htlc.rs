@@ -36,7 +36,7 @@ use lightning_block_sync::poll::ChainTip;
 use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
-use pl_00_intro::ch1_intro_htlcs::exercises::{
+use pl_00_intro::ch1_intro_htlcs::solutions::{
     build_htlc_commitment_transaction, two_of_two_multisig_redeem_script,generate_p2wsh_signature
 };
 use bitcoin::PublicKey as BitcoinPubKey;

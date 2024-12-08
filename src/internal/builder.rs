@@ -2,8 +2,11 @@
 use bitcoin::script::{Builder as BitcoinBuilder, ScriptBuf, ScriptHash};
 use bitcoin::opcodes;
 use bitcoin::secp256k1::ecdsa::Signature;
-use bitcoin::PublicKey;
+use bitcoin::secp256k1::PublicKey;
+use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::script::PushBytes;
+use bitcoin::PubkeyHash;
+use bitcoin::hashes::Hash;
 
 pub struct Builder {
     inner: BitcoinBuilder,
@@ -44,7 +47,8 @@ impl Builder {
     }
 
     pub fn push_pubkey_hash(mut self, key: &PublicKey) -> Self {
-        self.inner = self.inner.push_slice(&key.pubkey_hash());
+        let pubkey_hash = &PubkeyHash::hash(&key.serialize());
+        self.inner = self.inner.push_slice(&pubkey_hash);
         self
     }
 
@@ -54,7 +58,8 @@ impl Builder {
     }
 
     pub fn push_key(mut self, key: &PublicKey) -> Self {
-        self.inner = self.inner.push_key(key);
+        let serialized_key = key.serialize();
+        self.inner = self.inner.push_slice(serialized_key);
         self
     }
 

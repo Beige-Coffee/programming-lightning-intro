@@ -1,5 +1,4 @@
 use pl_00_intro::internal::bitcoind_client::BitcoindClient;
-use pl_00_intro::internal::convert::{ListUnspentUtxo};
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::consensus::encode::serialize_hex;
 use pl_00_intro::internal::hex_utils;
