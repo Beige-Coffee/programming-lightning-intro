@@ -13,6 +13,9 @@ alias sendtx='bcli sendrawtransaction'
 # an alias for decoding a transaction
 alias decodetx='bcli decoderawtransaction'
 
+# an alias for getting a transaction
+alias gettx='bcli gettransaction'
+
 # an alias for decoding a transaction
 alias getutxo='bcli gettxout'
 

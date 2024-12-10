@@ -35,7 +35,7 @@ use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, B
 use pl_00_intro::internal::bitcoind_client;
 use pl_00_intro::internal::bitcoind_client::BitcoindClient;
 use pl_00_intro::ch1_intro_htlcs::solutions::build_funding_transaction;
-use pl_00_intro::internal::helper::{secp256k1_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key};
+use pl_00_intro::internal::helper::{pubkey_from_private_key, bitcoin_pubkey_from_private_key, secp256k1_private_key};
 use pl_00_intro::internal::convert;
 use pl_00_intro::internal::convert::{BlockchainInfo, ListUnspentUtxo, SignedTx};
 use pl_00_intro::internal::hex_utils;
@@ -56,8 +56,8 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     // we're locking to a 2-of-2 multisig, so we need two public keys
     // normally, we would generate our own public key
     //   and the counterparty would send us theirs
-    let our_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
-    let counterparty_pubkey = secp256k1_pubkey_from_private_key(&[0x02; 32]);
+    let our_public_key = pubkey_from_private_key(&[0x01; 32]);
+    let counterparty_pubkey = pubkey_from_private_key(&[0x02; 32]);
 
     // build funding transaction using the function we created
     let tx = build_funding_transaction(

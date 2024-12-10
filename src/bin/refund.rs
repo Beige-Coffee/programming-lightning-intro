@@ -45,7 +45,7 @@ use pl_00_intro::internal::bitcoind_client::BitcoindClient;
 use pl_00_intro::internal::convert;
 use pl_00_intro::internal::convert::BlockchainInfo;
 use pl_00_intro::internal::hex_utils;
-use pl_00_intro::internal::helper::{secp256k1_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key};
+use pl_00_intro::internal::helper::{pubkey_from_private_key, bitcoin_pubkey_from_private_key, secp256k1_private_key};
 use serde_json;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -103,8 +103,8 @@ async fn main() {
 
     // Get our keys
     let our_funding_private_key = secp256k1_private_key(&[0x01; 32]);
-    let our_funding_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
-    let our_commitment_pubkey = secp256k1_pubkey_from_private_key(&[0x11; 32]);
+    let our_funding_public_key = pubkey_from_private_key(&[0x01; 32]);
+    let our_commitment_pubkey = pubkey_from_private_key(&[0x11; 32]);
 
     let our_key_manager = KeyManager{
             funding_private_key: our_funding_private_key,
@@ -114,8 +114,8 @@ async fn main() {
 
     // Get our Counterparty Pubkey
     let counterparty_funding_private_key = secp256k1_private_key(&[0x02; 32]);
-    let counterparty_funding_public_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
-    let counterparty_commitment_pubkey = secp256k1_pubkey_from_private_key(&[0x21; 32]);
+    let counterparty_funding_public_key = pubkey_from_private_key(&[0x02; 32]);
+    let counterparty_commitment_pubkey = pubkey_from_private_key(&[0x21; 32]);
 
     let counterparty_key_manager = KeyManager{
             funding_private_key: counterparty_funding_private_key,
