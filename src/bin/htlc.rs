@@ -37,7 +37,7 @@ use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use pl_00_intro::ch1_intro_htlcs::solutions::{
-    build_htlc_commitment_transaction, two_of_two_multisig_redeem_script,generate_p2wsh_signature
+    build_htlc_commitment_transaction, two_of_two_multisig_witness_script
 };
 use bitcoin::PublicKey as BitcoinPubKey;
 use pl_00_intro::internal::bitcoind_client;
@@ -45,7 +45,7 @@ use pl_00_intro::internal::bitcoind_client::BitcoindClient;
 use pl_00_intro::internal::convert;
 use pl_00_intro::internal::convert::BlockchainInfo;
 use pl_00_intro::internal::hex_utils;
-use pl_00_intro::internal::helper::{secp256k1_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key};
+use pl_00_intro::internal::helper::{pubkey_from_private_key, secp256k1_private_key};
 use serde_json;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -54,7 +54,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use hex;
-use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, get_funding_input, get_arg};
+use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, get_funding_input, get_arg, generate_p2wsh_signature};
 
 /// hash160 of the empty string
 const HASH160_DUMMY: [u8; 20] = [
@@ -104,7 +104,7 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
 
     // Prepare the redeem script for signing (e.g., P2PKH or P2WPKH)
     let redeem_script =
-        two_of_two_multisig_redeem_script(
+        two_of_two_multisig_witness_script(
             &our_key_manager.funding_public_key,
             &counterparty_key_manager.funding_public_key);
 
@@ -171,11 +171,11 @@ async fn main() {
 
     // Get our keys
     let our_funding_private_key = secp256k1_private_key(&[0x01; 32]);
-    let our_funding_public_key = secp256k1_pubkey_from_private_key(&[0x01; 32]);
-    let local_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x11; 32]);
-    let revocation_pubkey = secp256k1_pubkey_from_private_key(&[0x12; 32]);
-    let to_local_delayed_pubkey = secp256k1_pubkey_from_private_key(&[0x13; 32]);
-    let local_pubkey = secp256k1_pubkey_from_private_key(&[0x14; 32]);
+    let our_funding_public_key = pubkey_from_private_key(&[0x01; 32]);
+    let local_htlc_pubkey = pubkey_from_private_key(&[0x11; 32]);
+    let revocation_pubkey = pubkey_from_private_key(&[0x12; 32]);
+    let to_local_delayed_pubkey = pubkey_from_private_key(&[0x13; 32]);
+    let local_pubkey = pubkey_from_private_key(&[0x14; 32]);
 
     let our_key_manager = KeyManager{
             funding_private_key: our_funding_private_key,
@@ -188,11 +188,11 @@ async fn main() {
 
     // Get our Counterparty Pubkey
     let counterparty_funding_private_key = secp256k1_private_key(&[0x02; 32]);
-    let counterparty_funding_public_key = secp256k1_pubkey_from_private_key(&[0x02; 32]);
-    let counterparty_htlc_pubkey = secp256k1_pubkey_from_private_key(&[0x21; 32]);
-    let counterparty_pubkey = secp256k1_pubkey_from_private_key(&[0x22; 32]);
-    let counterparty_delayed_key = secp256k1_pubkey_from_private_key(&[0x23; 32]);
-    let counterparty_revocation_key = secp256k1_pubkey_from_private_key(&[0x24; 32]);
+    let counterparty_funding_public_key = pubkey_from_private_key(&[0x02; 32]);
+    let counterparty_htlc_pubkey = pubkey_from_private_key(&[0x21; 32]);
+    let counterparty_pubkey = pubkey_from_private_key(&[0x22; 32]);
+    let counterparty_delayed_key = pubkey_from_private_key(&[0x23; 32]);
+    let counterparty_revocation_key = pubkey_from_private_key(&[0x24; 32]);
 
     let counterparty_key_manager = KeyManager{
             funding_private_key: counterparty_funding_private_key,

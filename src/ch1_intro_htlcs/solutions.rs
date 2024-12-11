@@ -13,7 +13,7 @@ use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, W
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
 
-pub fn two_of_two_multisig_redeem_script(
+pub fn two_of_two_multisig_witness_script(
     pubkey1: &PublicKey,
     pubkey2: &PublicKey,
 ) -> ScriptBuf {
@@ -46,7 +46,7 @@ pub fn build_funding_transaction(
     amount: u64,
 ) -> Transaction {
 
-    let output_script = two_of_two_multisig_redeem_script(alice_pubkey, bob_pubkey);
+    let output_script = two_of_two_multisig_witness_script(alice_pubkey, bob_pubkey);
 
     let txout = build_output(amount, output_script.to_p2wsh());
 

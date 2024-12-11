@@ -9,6 +9,14 @@ use bitcoin::{OutPoint, Sequence, TxIn, Witness};
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::Hash;
 use std::env;
+use bitcoin::secp256k1;
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::Message;
+use bitcoin::sighash::EcdsaSighashType;
+use bitcoin::sighash::SighashCache;
+use bitcoin::secp256k1::Scalar;
+use bitcoin::secp256k1::Secp256k1;
+use bitcoin::amount::Amount;
 
 pub async fn get_bitcoind_client() -> BitcoindClient {
   let bitcoind = BitcoindClient::new(
@@ -142,3 +150,41 @@ pub fn get_arg() -> String {
     txid.to_string()
 }
 
+pub fn generate_p2wsh_signature(
+    transaction: Transaction,
+    input_idx: usize,
+    witness_script: &ScriptBuf,
+    value: u64,
+    sighash_type: EcdsaSighashType,
+    private_key: secp256k1::SecretKey,
+) -> Signature {
+    let secp = Secp256k1::new();
+
+    let message =
+        generate_p2wsh_message(transaction, input_idx, witness_script, value, sighash_type);
+    let signature = secp.sign_ecdsa(&message, &private_key);
+
+    signature
+}
+
+fn generate_p2wsh_message(
+    transaction: Transaction,
+    input_idx: usize,
+    witness_script: &ScriptBuf,
+    value: u64,
+    sighash_type: EcdsaSighashType,
+) -> Message {
+    let secp = Secp256k1::new();
+
+    let mut cache = SighashCache::new(&transaction);
+
+    let amount = Amount::from_sat(value);
+
+    let sighash = cache
+        .p2wsh_signature_hash(input_idx, &witness_script, amount, sighash_type)
+        .unwrap();
+
+    let message = Message::from_digest_slice(&sighash[..]).unwrap();
+
+    message
+}

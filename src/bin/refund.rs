@@ -37,7 +37,7 @@ use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use pl_00_intro::ch1_intro_htlcs::solutions::{
-    build_htlc_commitment_transaction, two_of_two_multisig_redeem_script,generate_p2wsh_signature, build_refund_transaction
+    build_htlc_commitment_transaction, two_of_two_multisig_witness_script, build_refund_transaction
 };
 use bitcoin::PublicKey as BitcoinPubKey;
 use pl_00_intro::internal::bitcoind_client;
@@ -54,7 +54,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use hex;
-use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, get_funding_input, get_arg};
+use helper::{get_bitcoind_client, get_unspent_output, generate_p2wsh_signature, sign_raw_transaction, get_funding_input, get_arg};
 
 
 pub struct KeyManager{
@@ -143,7 +143,7 @@ pub fn sign_funding_transaction(tx: Transaction,
     
     // Prepare the redeem script for signing (e.g., P2PKH or P2WPKH)
     let redeem_script =
-        two_of_two_multisig_redeem_script(
+        two_of_two_multisig_witness_script(
             &our_key_manager.funding_public_key,
             &counterparty_key_manager.funding_public_key);
 

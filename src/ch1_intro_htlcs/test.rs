@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::ch1_intro_htlcs::exercises::{
     build_funding_transaction, build_refund_transaction, generate_revocation_pubkey,
-    timelocked_p2pkh, to_local, two_of_two_multisig_redeem_script, build_commitment_transaction, build_htlc_commitment_transaction, build_htlc_timeout_transaction
+    timelocked_p2pkh, to_local, two_of_two_multisig_witness_script, build_commitment_transaction, build_htlc_commitment_transaction, build_htlc_timeout_transaction
 };
 use crate::internal::helper::{
     bitcoin_pubkey_from_private_key, pubkey_from_private_key,
@@ -21,11 +21,11 @@ const HASH160_DUMMY: [u8; 20] = [
 ];
 
 #[test]
-fn test_two_of_two_multisig_redeem_script() {
+fn test_two_of_two_multisig_witness_script() {
     let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
     let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
     let result =
-        std::panic::catch_unwind(|| two_of_two_multisig_redeem_script(&alice_pubkey, &bob_pubkey));
+        std::panic::catch_unwind(|| two_of_two_multisig_witness_script(&alice_pubkey, &bob_pubkey));
 
     match result {
         Ok(script) => {
