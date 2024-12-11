@@ -1,11 +1,11 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::ch1_intro_htlcs::exercises::{
-    build_funding_transaction, build_refund_transaction, generate_revocation_pubkey,
-    timelocked_p2pkh, to_local, two_of_two_multisig_witness_script, build_commitment_transaction, build_htlc_commitment_transaction, build_htlc_timeout_transaction
+    build_commitment_transaction, build_funding_transaction, build_htlc_commitment_transaction,
+    build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_pubkey,
+    timelocked_p2pkh, to_local, two_of_two_multisig_witness_script,
 };
 use crate::internal::helper::{
-    bitcoin_pubkey_from_private_key, pubkey_from_private_key,
-    secp256k1_private_key,
+    bitcoin_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key,
 };
 use bitcoin::hash_types::Txid;
 use bitcoin::script::ScriptBuf;
@@ -24,26 +24,16 @@ const HASH160_DUMMY: [u8; 20] = [
 fn test_two_of_two_multisig_witness_script() {
     let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
     let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
-    let result =
-        std::panic::catch_unwind(|| two_of_two_multisig_witness_script(&alice_pubkey, &bob_pubkey));
+    let result = two_of_two_multisig_witness_script(&alice_pubkey, &bob_pubkey);
 
-    match result {
-        Ok(script) => {
-            let their_solution = format!("{}", script.script_hash());
-            println!("their solution: {}", their_solution);
-            let acceptable_solutions = [
-                "d8fecda80c30e89a9e7f0964ee79ce055288bc1c".to_string(),
-                "e5c7b40d1f14542cc2c7a15819de088a33c8f7ba".to_string(),
-            ];
+    let their_solution = format!("{}", result.script_hash());
+    println!("their solution: {}", their_solution);
+    let acceptable_solutions = [
+        "d8fecda80c30e89a9e7f0964ee79ce055288bc1c".to_string(),
+        "e5c7b40d1f14542cc2c7a15819de088a33c8f7ba".to_string(),
+    ];
 
-            assert!(acceptable_solutions.contains(&their_solution))
-        }
-        Err(e) => {
-            if let Ok(string) = e.downcast::<String>() {
-                println!("{}", string);
-            }
-        }
-    }
+    assert!(acceptable_solutions.contains(&their_solution))
 }
 
 #[test]
@@ -51,24 +41,16 @@ fn test_timelocked_p2pkh() {
     let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
     let timestamp: i64 = 1000000000;
 
-    let result = std::panic::catch_unwind(|| timelocked_p2pkh(&alice_pubkey, timestamp));
-    match result {
-        Ok(script) => {
-            assert_eq!(
-                format!("{}", script.script_hash()),
-                "9c727802a2cd91beb1f1a0a5fd8b391f61c76343".to_string()
-            )
-        }
-        Err(e) => {
-            if let Ok(string) = e.downcast::<String>() {
-                println!("{}", string);
-            }
-        }
-    }
+    let result = timelocked_p2pkh(&alice_pubkey, timestamp);
+
+    assert_eq!(
+        format!("{}", result.script_hash()),
+        "9c727802a2cd91beb1f1a0a5fd8b391f61c76343".to_string()
+    )
 }
 
 #[test]
-fn test_build_multisig_transaction() {
+fn test_build_funding_transaction() {
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -161,74 +143,61 @@ fn test_to_local() {
     let revocation_key = pubkey_from_private_key(&[0x01; 32]);
     let to_local_delayed_pubkey = pubkey_from_private_key(&[0x02; 32]);
     let to_self_delay: i64 = 144;
-    let result = std::panic::catch_unwind(|| {
-        to_local(&revocation_key, &to_local_delayed_pubkey, to_self_delay)
-    });
+    let result = to_local(&revocation_key, &to_local_delayed_pubkey, to_self_delay);
 
-    match result {
-        Ok(script) => {
-            let their_solution = format!("{}", script.script_hash());
-            println!("their solution: {}", their_solution);
-            let acceptable_solutions = ["6c61fd62fe96fc6aa5485a820ce87d662329f4ab".to_string()];
+    let their_solution = format!("{}", result.script_hash());
+    println!("their solution: {}", their_solution);
+    let acceptable_solutions = ["6c61fd62fe96fc6aa5485a820ce87d662329f4ab".to_string()];
 
-            assert!(acceptable_solutions.contains(&their_solution))
-        }
-        Err(e) => {
-            if let Ok(string) = e.downcast::<String>() {
-                println!("{}", string);
-            }
-        }
-    }
+    assert!(acceptable_solutions.contains(&their_solution))
 }
 
 #[test]
 fn test_build_commitment_transaction() {
-        let outpoint = OutPoint::new(
-            "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
-                .parse::<Txid>()
-                .unwrap(),
-            1,
-        );
+    let outpoint = OutPoint::new(
+        "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
+            .parse::<Txid>()
+            .unwrap(),
+        1,
+    );
 
-        let txin = TxIn {
-            previous_output: outpoint,
-            script_sig: ScriptBuf::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::new(),
-        };
+    let txin = TxIn {
+        previous_output: outpoint,
+        script_sig: ScriptBuf::new(),
+        sequence: Sequence::MAX,
+        witness: Witness::new(),
+    };
 
-        let revocation_pubkey = pubkey_from_private_key(&[0x01; 32]);
-        let to_local_delayed_pubkey = pubkey_from_private_key(&[0x02; 32]);
-        let remote_pubkey = pubkey_from_private_key(&[0x03; 32]);
+    let revocation_pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let to_local_delayed_pubkey = pubkey_from_private_key(&[0x02; 32]);
+    let remote_pubkey = pubkey_from_private_key(&[0x03; 32]);
 
-        let to_self_delay: i64 = 144;
-        let alice_amount: u64 = 100000;
-        let bob_amount: u64 = 100000;
+    let to_self_delay: i64 = 144;
+    let alice_amount: u64 = 100000;
+    let bob_amount: u64 = 100000;
 
-        let transaction = build_commitment_transaction(
-                            txin,
-                            &revocation_pubkey,
-                            &to_local_delayed_pubkey,
-                            remote_pubkey,
-                            to_self_delay,
-                            alice_amount,
-                            bob_amount);
+    let transaction = build_commitment_transaction(
+        txin,
+        &revocation_pubkey,
+        &to_local_delayed_pubkey,
+        remote_pubkey,
+        to_self_delay,
+        alice_amount,
+        bob_amount,
+    );
 
-        let their_solution = transaction.compute_txid().to_string();
+    let their_solution = transaction.compute_txid().to_string();
 
-        println!("their solution: {}", their_solution);
+    println!("their solution: {}", their_solution);
 
-        let acceptable_solutions = [
-            "e0da6b5c753ab8a22a65b6f9bcc0460f2724f244121f62ddc05c35dbf42719cd".to_string(),
-        ];
+    let acceptable_solutions =
+        ["e0da6b5c753ab8a22a65b6f9bcc0460f2724f244121f62ddc05c35dbf42719cd".to_string()];
 
-        assert!(acceptable_solutions.contains(&their_solution));
-    }
-
+    assert!(acceptable_solutions.contains(&their_solution));
+}
 
 #[test]
 fn test_build_htlc_commitment_transaction() {
-
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -256,33 +225,31 @@ fn test_build_htlc_commitment_transaction() {
     let remote_amount: u64 = 100000;
 
     let transaction = build_htlc_commitment_transaction(
-            txin,
-            &revocation_pubkey,
-            &remote_htlc_pubkey,
-            &local_htlc_pubkey,
-            &to_local_delayed_pubkey,
-            remote_pubkey,
-            to_self_delay,
-            &payment_hash160,
-            htlc_amount,
-            local_amount,
-            remote_amount);
+        txin,
+        &revocation_pubkey,
+        &remote_htlc_pubkey,
+        &local_htlc_pubkey,
+        &to_local_delayed_pubkey,
+        remote_pubkey,
+        to_self_delay,
+        &payment_hash160,
+        htlc_amount,
+        local_amount,
+        remote_amount,
+    );
 
     let their_solution = transaction.compute_txid().to_string();
 
     println!("their solution: {}", their_solution);
 
-    let acceptable_solutions = [
-        "d8509e0413e1d72f7ff35201a4b62308dfca839613568b62c0274ba721a2da3b".to_string(),
-    ];
+    let acceptable_solutions =
+        ["d8509e0413e1d72f7ff35201a4b62308dfca839613568b62c0274ba721a2da3b".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
-
 }
 
 #[test]
 fn test_build_htlc_timeout_transaction() {
-
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -308,21 +275,20 @@ fn test_build_htlc_timeout_transaction() {
     let htlc_amount: u64 = 100000;
 
     let transaction = build_htlc_timeout_transaction(
-            txin,
-            &revocation_pubkey,
-            &broadcaster_delayed_payment_key,
-            contest_delay,
-            cltv_expiry,
-            htlc_amount);
+        txin,
+        &revocation_pubkey,
+        &broadcaster_delayed_payment_key,
+        contest_delay,
+        cltv_expiry,
+        htlc_amount,
+    );
 
     let their_solution = transaction.compute_txid().to_string();
 
     println!("their solution: {}", their_solution);
 
-    let acceptable_solutions = [
-        "f590bc5b3b48fd28e0c8f79dd2cad685dc2c0034cb12ebfaa9c933ffbe433fb7".to_string(),
-    ];
+    let acceptable_solutions =
+        ["f590bc5b3b48fd28e0c8f79dd2cad685dc2c0034cb12ebfaa9c933ffbe433fb7".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
-
 }

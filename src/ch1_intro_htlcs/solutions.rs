@@ -26,9 +26,9 @@ pub fn two_of_two_multisig_witness_script(
         .into_script()
 }
 
-pub fn timelocked_p2pkh(pubkey: &PublicKey, height_or_timestamp: i64) -> ScriptBuf {
+pub fn timelocked_p2pkh(pubkey: &PublicKey, blocks_or_seconds: i64) -> ScriptBuf {
     Builder::new()
-        .push_int(height_or_timestamp)
+        .push_int(blocks_or_seconds)
         .push_opcode(opcodes::OP_CSV)
         .push_opcode(opcodes::OP_DROP)
         .push_opcode(opcodes::OP_DUP)
@@ -94,10 +94,10 @@ pub fn generate_revocation_pubkey(
     per_commitment_point: PublicKey,
 ) -> PublicKey {
     let rev_append_commit_hash_key =
-        hash_pubkeys(&countersignatory_basepoint, &per_commitment_point);
+        hash_pubkeys(countersignatory_basepoint, per_commitment_point);
 
     let commit_append_rev_hash_key =
-        hash_pubkeys(&per_commitment_point, &countersignatory_basepoint);
+        hash_pubkeys(per_commitment_point, countersignatory_basepoint);
 
     let countersignatory_contrib =
         tweak_pubkey(countersignatory_basepoint, rev_append_commit_hash_key);
@@ -200,7 +200,7 @@ pub fn build_htlc_commitment_transaction(
 }
 
 pub fn build_htlc_timeout_transaction(
-    funding_txin: TxIn,
+    htlc_txin: TxIn,
     revocation_pubkey: &PublicKey,
     broadcaster_delayed_payment_key: &PublicKey,
     contest_delay: i64,
@@ -226,5 +226,7 @@ pub fn build_htlc_timeout_transaction(
 
     tx
 }
+
+
 
 

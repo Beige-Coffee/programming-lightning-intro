@@ -15,7 +15,7 @@ hidden = [
   "Cargo.toml",
   "Cargo.lock",
 ]
-entrypoint = "src/lib.rs"
+entrypoint = "src/ch1_intro_htlcs/exercises.rs"
 onBoot = ["bash", "start.sh"]
 
 [packager]

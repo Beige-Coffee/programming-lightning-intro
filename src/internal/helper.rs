@@ -24,7 +24,7 @@ pub fn tweak_pubkey(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
     .expect("Multiplying a valid public key by a hash is expected to never fail per secp256k1 docs")
 }
 
-pub fn hash_pubkeys(key1: &PublicKey, key2: &PublicKey) -> [u8; 32] {
+pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
     let mut sha = Sha256::engine();
     sha.input(&key1.serialize());
     sha.input(&key2.serialize());
