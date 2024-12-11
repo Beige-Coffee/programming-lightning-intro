@@ -4,8 +4,8 @@ use crate::ch1_intro_htlcs::exercises::{
     timelocked_p2pkh, to_local, two_of_two_multisig_redeem_script, build_commitment_transaction, build_htlc_commitment_transaction, build_htlc_timeout_transaction
 };
 use crate::internal::helper::{
-    bitcoin_pubkey_from_private_key, pubkey_from_private_key, pubkey_multiplication_tweak,
-    secp256k1_private_key, sha256_hash,
+    bitcoin_pubkey_from_private_key, pubkey_from_private_key,
+    secp256k1_private_key,
 };
 use bitcoin::hash_types::Txid;
 use bitcoin::script::ScriptBuf;

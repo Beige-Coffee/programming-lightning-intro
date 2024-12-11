@@ -2,9 +2,9 @@
 use crate::internal;
 use bitcoin::script::ScriptBuf;
 use internal::builder::Builder;
-use internal::helper::{pubkey_multiplication_tweak, sha256_hash,
+use internal::helper::{tweak_pubkey, hash_pubkeys,
                       build_output, build_transaction, p2wpkh_output_script,
-                      build_htlc_offerer_witness_script};
+                      build_htlc_offerer_witness_script, add_pubkeys};
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::secp256k1::PublicKey;
 use bitcoin::PublicKey as BitcoinPublicKey;
@@ -94,21 +94,20 @@ pub fn generate_revocation_pubkey(
     per_commitment_point: PublicKey,
 ) -> PublicKey {
     let rev_append_commit_hash_key =
-        sha256_hash(&countersignatory_basepoint, &per_commitment_point);
+        hash_pubkeys(&countersignatory_basepoint, &per_commitment_point);
 
     let commit_append_rev_hash_key =
-        sha256_hash(&per_commitment_point, &countersignatory_basepoint);
+        hash_pubkeys(&per_commitment_point, &countersignatory_basepoint);
 
     let countersignatory_contrib =
-        pubkey_multiplication_tweak(countersignatory_basepoint, rev_append_commit_hash_key);
+        tweak_pubkey(countersignatory_basepoint, rev_append_commit_hash_key);
 
     let broadcaster_contrib =
-        pubkey_multiplication_tweak(per_commitment_point, commit_append_rev_hash_key);
+        tweak_pubkey(per_commitment_point, commit_append_rev_hash_key);
 
-    let pk = countersignatory_contrib.combine(&broadcaster_contrib)
-        .expect("Addition only fails if the tweak is the inverse of the key. This is not possible when the tweak commits to the key.");
+    let revocation_pubkey = add_pubkeys(countersignatory_contrib, broadcaster_contrib);
 
-    pk
+    revocation_pubkey
 }
 
 pub fn to_local(

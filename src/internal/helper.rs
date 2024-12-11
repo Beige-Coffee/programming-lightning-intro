@@ -18,18 +18,25 @@ use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::{PubkeyHash, WPubkeyHash};
 
 
-pub fn pubkey_multiplication_tweak(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
+pub fn tweak_pubkey(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
     let secp = Secp256k1::new();
     pubkey1.mul_tweak(&secp, &Scalar::from_be_bytes(sha_bytes).unwrap())
     .expect("Multiplying a valid public key by a hash is expected to never fail per secp256k1 docs")
 }
 
-pub fn sha256_hash(key1: &PublicKey, key2: &PublicKey) -> [u8; 32] {
+pub fn hash_pubkeys(key1: &PublicKey, key2: &PublicKey) -> [u8; 32] {
     let mut sha = Sha256::engine();
     sha.input(&key1.serialize());
     sha.input(&key2.serialize());
 
     Sha256::from_engine(sha).to_byte_array()
+}
+
+pub fn add_pubkeys(key1: PublicKey, key2: PublicKey) -> PublicKey {
+    let pk = key1.combine(&key2)
+        .expect("Addition only fails if the tweak is the inverse of the key. This is not possible when the tweak commits to the key.");
+
+    pk
 }
 
 pub fn secp256k1_private_key(private_key_bytes: &[u8; 32]) -> secp256k1::SecretKey {

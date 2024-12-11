@@ -21,7 +21,6 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
 use internal::channel_manager::ChannelManager;
-use internal::helper::{pubkey_multiplication_tweak, sha256_hash};
 use lightning::sign::KeysManager;
 use std::time::{Duration, SystemTime};
 
