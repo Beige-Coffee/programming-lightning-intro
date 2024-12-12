@@ -202,15 +202,15 @@ pub fn build_htlc_commitment_transaction(
 pub fn build_htlc_timeout_transaction(
     htlc_txin: TxIn,
     revocation_pubkey: &PublicKey,
-    broadcaster_delayed_payment_key: &PublicKey,
-    contest_delay: i64,
+    to_local_delayed_pubkey: &PublicKey,
+    to_self_delay: i64,
     cltv_expiry: u32,
     htlc_amount: u64,
 ) -> Transaction {
     let htlc_timeout_script = to_local(
         revocation_pubkey,
-        broadcaster_delayed_payment_key,
-        contest_delay,
+        to_local_delayed_pubkey,
+        to_self_delay,
     );
 
     let htlc_output = build_output(htlc_amount, htlc_timeout_script.to_p2wsh());
@@ -221,7 +221,7 @@ pub fn build_htlc_timeout_transaction(
     let tx = build_transaction(
                 version,
                 locktime,
-                vec![funding_txin],
+                vec![htlc_txin],
                 vec![htlc_output]);
 
     tx
