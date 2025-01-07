@@ -17,11 +17,15 @@ pub fn two_of_two_multisig_witness_script(
     pubkey1: &PublicKey,
     pubkey2: &PublicKey,
 ) -> ScriptBuf {
+    
     todo!()
+    
 }
 
 pub fn timelocked_p2pkh(pubkey: &PublicKey, blocks_or_seconds: i64) -> ScriptBuf {
+    
     todo!()
+    
 }
 
 pub fn build_funding_transaction(
@@ -30,6 +34,8 @@ pub fn build_funding_transaction(
     bob_pubkey: &PublicKey,
     amount: u64,
 ) -> Transaction {
+
+    let output_script = two_of_two_multisig_witness_script(alice_pubkey, bob_pubkey);
 
     todo!()
 }
@@ -41,15 +47,18 @@ pub fn build_refund_transaction(
     alice_balance: u64,
     bob_balance: u64
 ) -> Transaction {
-
+    
     todo!()
+    
 }
 
 pub fn generate_revocation_pubkey(
     countersignatory_basepoint: PublicKey,
     per_commitment_point: PublicKey,
 ) -> PublicKey {
+    
     todo!()
+    
 }
 
 pub fn to_local(
@@ -57,7 +66,9 @@ pub fn to_local(
     to_local_delayed_pubkey: &PublicKey,
     to_self_delay: i64,
 ) -> ScriptBuf {
+
     todo!()
+    
 }
 
 pub fn build_commitment_transaction(
@@ -69,8 +80,9 @@ pub fn build_commitment_transaction(
     local_amount: u64,
     remote_amount: u64,
 ) -> Transaction {
-
+    
     todo!()
+    
 }
 
 pub fn build_htlc_commitment_transaction(
@@ -86,30 +98,18 @@ pub fn build_htlc_commitment_transaction(
     local_amount: u64,
     remote_amount: u64,
 ) -> Transaction {
-    let htlc_offerer_script = build_htlc_offerer_witness_script(
-        revocation_pubkey,
-        remote_htlc_pubkey,
-        local_htlc_pubkey,
-        payment_hash160,
-    );
 
     todo!()
-
+  
 }
 
 pub fn build_htlc_timeout_transaction(
     htlc_txin: TxIn,
     revocation_pubkey: &PublicKey,
-    broadcaster_delayed_payment_key: &PublicKey,
-    contest_delay: i64,
+    to_local_delayed_pubkey: &PublicKey,
+    to_self_delay: i64,
     cltv_expiry: u32,
     htlc_amount: u64,
 ) -> Transaction {
-    let htlc_timeout_script = to_local(
-        revocation_pubkey,
-        broadcaster_delayed_payment_key,
-        contest_delay,
-    );
-
     todo!()
 }

@@ -35,17 +35,31 @@ impl BlockSource for BitcoindClientExercise {
     fn get_header<'a>(
         &'a self, header_hash: &'a BlockHash, height_hint: Option<u32>,
     ) -> AsyncBlockSourceResult<'a, BlockHeaderData> {
-        Box::pin(async move { self.bitcoind_rpc_client.get_header(header_hash, height_hint).await })
+        Box::pin(async move { 
+            
+            //self.bitcoind_rpc_client.get_header(header_hash, height_hint).await
+            let header_hash = serde_json::json!(header_hash.to_string());
+            Ok(self.bitcoind_rpc_client.call_method("getblockheader", &[header_hash]).await?)
+        
+        })
     }
 
     fn get_block<'a>(
         &'a self, header_hash: &'a BlockHash,
     ) -> AsyncBlockSourceResult<'a, BlockData> {
-        Box::pin(async move { self.bitcoind_rpc_client.get_block(header_hash).await })
+        Box::pin(async move {
+            
+            self.bitcoind_rpc_client.get_block(header_hash).await
+        
+        })
     }
 
     fn get_best_block(&self) -> AsyncBlockSourceResult<(BlockHash, Option<u32>)> {
-        Box::pin(async move { self.bitcoind_rpc_client.get_best_block().await })
+        Box::pin(async move { 
+            
+            self.bitcoind_rpc_client.get_best_block().await
+        
+        })
     }
 }
 
@@ -59,7 +73,7 @@ impl BitcoindClientExercise {
         test_rpc_call(&bitcoind_rpc_client);
 
         let client = Self {
-            bitcoind_rpc_client: Arc::new(bitcoind_rpc_client),
+            bitcoind_rpc_client: bitcoind_rpc_client,
             host,
             port,
             rpc_user,

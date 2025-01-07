@@ -1,4 +1,4 @@
-run = "cargo test --lib ch1_intro_htlcs"
+run = "cargo test --lib ch2_setup"
 hidden = [
   "target",
   ".tutorial",

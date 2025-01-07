@@ -22,6 +22,7 @@ use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::UnboundedCache;
 use std::ops::Deref;
+use lightning_block_sync::SpvClient;
 
 pub fn get_http_endpoint(host: &String, port: u16) -> HttpEndpoint {
   HttpEndpoint::for_host(host.clone()).with_port(port)
@@ -31,9 +32,9 @@ pub fn format_rpc_credentials(rpc_user: &String, rpc_password: &String) -> Strin
   base64::encode(format!("{}:{}", rpc_user.clone(), rpc_password.clone()))
 }
 
-pub fn new_rpc_client(rpc_credentials: &String, http_endpoint: HttpEndpoint) -> RpcClient {
+pub fn new_rpc_client(rpc_credentials: &String, http_endpoint: HttpEndpoint) -> Arc<RpcClient> {
   let client = RpcClient::new(&rpc_credentials, http_endpoint).unwrap();
-  client
+  Arc::new(client)
 }
 
 pub async fn test_rpc_call(bitcoind_rpc_client: &RpcClient) -> std::io::Result<BlockchainInfo> {
@@ -76,4 +77,12 @@ where
   L::Target: Listen,
 {
   SpvClient::new(best_block_header, poller, cache, listener)  // No need for &mut here
+}
+
+pub struct BitcoinRpcClient {
+  rpc_client: RpcClient
+}
+
+impl BitcoinRpcClient {
+  pub fn call_rpc_method()
 }
