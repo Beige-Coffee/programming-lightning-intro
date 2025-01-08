@@ -22,7 +22,8 @@ use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::UnboundedCache;
 use std::ops::Deref;
-use lightning_block_sync::SpvClient;
+use bitcoin::blockdata::transaction::Transaction;
+use bitcoin::consensus::{encode, Decodable, Encodable};
 
 pub fn get_http_endpoint(host: &String, port: u16) -> HttpEndpoint {
   HttpEndpoint::for_host(host.clone()).with_port(port)
@@ -79,10 +80,14 @@ where
   SpvClient::new(best_block_header, poller, cache, listener)  // No need for &mut here
 }
 
-pub struct BitcoinRpcClient {
-  rpc_client: RpcClient
+
+
+pub trait ToHex {
+    fn to_hex(&self) -> String;
 }
 
-impl BitcoinRpcClient {
-  pub fn call_rpc_method()
+impl ToHex for Transaction {
+    fn to_hex(&self) -> String {
+        encode::serialize_hex(self)
+    }
 }

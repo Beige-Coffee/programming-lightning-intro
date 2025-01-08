@@ -3,7 +3,7 @@ use crate::internal;
 use internal::convert::BlockchainInfo;
 use crate::ch2_setup::helpers::{get_http_endpoint, format_rpc_credentials, 
                                 new_rpc_client, test_rpc_call, get_best_block,
-                                get_chain_poller, get_new_cache, get_spv_client
+                                get_chain_poller, get_new_cache, get_spv_client, ToHex
 };
 use base64;
 use bitcoin::hash_types::{BlockHash};
@@ -20,6 +20,8 @@ use lightning::chain::Listen;
 use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
+use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
+use bitcoin::blockdata::transaction::Transaction;
 
 #[derive(Clone)]
 pub struct BitcoindClientExercise {
@@ -31,15 +33,22 @@ pub struct BitcoindClientExercise {
     rpc_password: String
 }
 
+impl BitcoindClientExercise {
+    async fn send_to_network(&self, tx_hex: String) -> bool {
+        self.bitcoind_rpc_client
+            .call_method::<serde_json::Value>("sendrawtransaction", &[tx_hex.into()])
+            .await
+            .is_ok()
+    }
+}
+
 impl BlockSource for BitcoindClientExercise {
     fn get_header<'a>(
         &'a self, header_hash: &'a BlockHash, height_hint: Option<u32>,
     ) -> AsyncBlockSourceResult<'a, BlockHeaderData> {
         Box::pin(async move { 
             
-            //self.bitcoind_rpc_client.get_header(header_hash, height_hint).await
-            let header_hash = serde_json::json!(header_hash.to_string());
-            Ok(self.bitcoind_rpc_client.call_method("getblockheader", &[header_hash]).await?)
+            self.bitcoind_rpc_client.get_header(header_hash, height_hint).await
         
         })
     }
@@ -116,5 +125,14 @@ pub async fn poll_for_blocks2<L: Listen>(bitcoind: BitcoindClientExercise, netwo
     loop {
         let best_block = spv_client.poll_best_tip().await.unwrap();
         tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}
+
+impl BroadcasterInterface for BitcoindClientExercise {
+    fn broadcast_transactions(&self, txs: &[&Transaction]) {
+        for tx in txs {
+            let hex_string = tx.to_hex();
+            self.send_to_network(hex_string);
+        }
     }
 }
