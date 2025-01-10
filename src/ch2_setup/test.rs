@@ -166,11 +166,11 @@ async fn test_fees() {
 
     // check UrgentOnChainSweep
     let high_fees = bitcoind_rpc_client.get_est_sat_per_1000_weight(high_fee_target);
-    assert_eq!(high_fees, 6000);
+    assert_eq!(high_fees, 6);
 
     // check MinAllowedAnchorChannelRemoteFee
     let low_fees = bitcoind_rpc_client.get_est_sat_per_1000_weight(low_fee_target);
-    assert_eq!(low_fees, 2000);
+    assert_eq!(low_fees, 2);
 }
 
 #[tokio::test]

@@ -6,7 +6,6 @@ use crate::internal::bitcoind_client::BitcoindClient;
 use crate::internal::channel_manager::ChannelManager;
 use std::time::{Duration, SystemTime};
 
-use crate::internal::helper::{pubkey_multiplication_tweak, sha256_hash};
 use bitcoin::amount::Amount;
 use bitcoin::hash_types::Txid;
 use bitcoin::hashes::hex::FromHex;
@@ -41,8 +40,8 @@ fn test_new_simple_key_manager() {
   );
   // check shutdown_pubkey
   assert_eq!(
-    keys_interface_impl.shutdown_pubkey.to_string(),
-      "033469d7e6bf878c18f7d52fa2cad8ac4efc329dc1413c486a979f012ffb606110".to_string()
+    keys_interface_impl.unilateral_close_pubkey.to_string(),
+      "02665a31546d90a812366bd637de00682d1492969da876dc1484f9b831838dcc7a".to_string()
   );
   // check channel_master_key
   assert_eq!(

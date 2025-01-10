@@ -10,13 +10,13 @@ use bitcoin::network::Network;
 use bitcoin::script::{ScriptBuf, ScriptHash};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::ecdsa::Signature;
-use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
+use bitcoin::secp256k1::PublicKey;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::SecretKey;
 use bitcoin::transaction::Version;
 use bitcoin::PubkeyHash;
-use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
+use bitcoin::{Block, OutPoint, Transaction, TxIn, TxOut};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
@@ -27,9 +27,11 @@ use std::time::{Duration, SystemTime};
 #[derive(Debug)]
 pub struct SimpleKeysManager {
     pub node_secret: SecretKey,
-    pub node_id: Secp256k1PublicKey,
-    pub shutdown_pubkey: Secp256k1PublicKey,
+    pub node_id: PublicKey,
+    pub unilateral_close_pubkey: PublicKey,
+    pub coop_close_pubkey: PublicKey,
     pub channel_master_key: Xpriv,
+    pub inbound_payment_key: SecretKey,
     pub channel_child_index: AtomicUsize,
     pub seed: [u8; 32],
 }
@@ -59,9 +61,9 @@ fn get_hardened_extended_child_private_key(master_key: Xpriv, idx: u32) -> Xpriv
     hardened_extended_child
 }
 
-fn get_public_key(private_key: SecretKey) -> Secp256k1PublicKey {
+fn get_public_key(private_key: SecretKey) -> PublicKey {
     let secp_ctx = Secp256k1::new();
-    let public_key = Secp256k1PublicKey::from_secret_key(&secp_ctx, &private_key);
+    let public_key = PublicKey::from_secret_key(&secp_ctx, &private_key);
     public_key
 }
 
@@ -72,16 +74,23 @@ pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
 
     let node_id = get_public_key(node_secret);
 
-    let shutdown_private_key = get_hardened_child_private_key(master_key, 2);
-    let shutdown_public_key = get_public_key(shutdown_private_key);
+    let unilateral_close_private_key = get_hardened_child_private_key(master_key, 1);
+    let unilateral_close_pubkey = get_public_key(unilateral_close_private_key);
+
+    let coop_close_private_key = get_hardened_child_private_key(master_key, 2);
+    let coop_close_pubkey = get_public_key(unilateral_close_private_key);
 
     let channel_master_key = get_hardened_extended_child_private_key(master_key, 3);
+
+    let inbound_payment_key = get_hardened_child_private_key(master_key, 5);
 
     SimpleKeysManager {
         node_secret: node_secret,
         node_id: node_id,
-        shutdown_pubkey: shutdown_public_key,
+        unilateral_close_pubkey: unilateral_close_pubkey,
+        coop_close_pubkey: coop_close_pubkey,
         channel_master_key: channel_master_key,
+        inbound_payment_key: inbound_payment_key,
         channel_child_index: AtomicUsize::new(0),
         seed: seed,
     }
