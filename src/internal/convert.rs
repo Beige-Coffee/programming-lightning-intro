@@ -4,6 +4,7 @@ use lightning_block_sync::http::JsonResponse;
 use std::convert::TryInto;
 use std::str::FromStr;
 use bitcoin::secp256k1::PublicKey;
+use serde_json::Value;
 
 #[derive(Debug)]
 pub struct BlockchainInfo {
@@ -39,6 +40,34 @@ impl TryInto<SignedTx> for JsonResponse {
       complete: self.0["complete"].as_bool().unwrap(),
     })
   }
+}
+
+#[derive(Debug)]
+pub struct MempoolInfo {
+    pub transaction_ids: Vec<String>,
+}
+
+impl TryInto<MempoolInfo> for JsonResponse {
+    type Error = std::io::Error;
+
+    fn try_into(self) -> std::io::Result<MempoolInfo> {
+        // Ensure the response is a JSON array
+        let array = self.0.as_array().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "Expected a JSON array")
+        })?;
+
+        // Convert the array items into a Vec<String>
+        let transaction_ids = array
+            .iter()
+            .map(|item| {
+                item.as_str()
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Non-string item found"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(MempoolInfo { transaction_ids })
+    }
 }
 
 #[derive(Debug)]

@@ -1,13 +1,20 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::internal;
 use internal::convert::BlockchainInfo;
+use internal::bitcoind_client::BitcoindClient;
+use internal::hex_utils;
 use base64;
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise
 };
+use bitcoin::consensus::encode::serialize_hex;
+use bitcoin::amount::Amount;
+use bitcoin::transaction::Version;
+use bitcoin::locktime::absolute::LockTime;
+use bitcoin::{Network, OutPoint, Sequence, TxIn, TxOut, WPubkeyHash, Witness};
 use lightning_block_sync::poll::ValidatedBlockHeader;
 use bitcoin::hash_types::{BlockHash};
-use bitcoin::{Network};
+use bitcoin::blockdata::script::ScriptBuf;
 use lightning_block_sync::http::HttpEndpoint;
 use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
@@ -90,4 +97,59 @@ impl ToHex for Transaction {
     fn to_hex(&self) -> String {
         encode::serialize_hex(self)
     }
+}
+
+pub async fn get_tx_hex() -> Transaction {
+    let bitcoind = BitcoindClient::new(
+        "0.0.0.0".to_string(),
+        18443,
+        "bitcoind".to_string(),
+        "bitcoind".to_string(),
+        Network::Regtest,
+    )
+    .await
+    .unwrap();
+
+    // Get an unspent output to spend
+    let utxos = bitcoind.list_unspent().await;
+    let utxo = utxos
+        .0
+        .iter()
+        .find(|utxo| utxo.amount > 1000)
+        .expect("No UTXOs with positive balance found");
+
+    // Create a transaction spending this UTXO
+    let tx_input = TxIn {
+        previous_output: OutPoint {
+            txid: utxo.txid,
+            vout: utxo.vout,
+        },
+        sequence: Sequence::MAX,
+        script_sig: ScriptBuf::new(),
+        witness: Witness::new(),
+    };
+
+    // Create a destination address
+    let dest_address = bitcoind.get_new_address().await;
+
+    // Create the transaction
+    let tx = Transaction {
+        version: Version::TWO,
+        lock_time: LockTime::ZERO,
+        input: vec![tx_input],
+        output: vec![TxOut {
+            value: Amount::from_sat(utxo.amount - 1000), // Subtract fee
+            script_pubkey: dest_address.script_pubkey(),
+        }],
+    };
+
+    let tx_hex = serialize_hex(&tx);
+
+    // Sign the transaction
+    let signed_tx = bitcoind.sign_raw_transaction_with_wallet(tx_hex).await;
+
+    let final_tx: Transaction =
+        encode::deserialize(&hex_utils::to_vec(&signed_tx.hex).unwrap()).unwrap();
+
+    final_tx
 }

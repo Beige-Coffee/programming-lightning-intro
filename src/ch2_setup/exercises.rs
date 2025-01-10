@@ -15,13 +15,24 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use tokio::time::{sleep, Duration};
 use lightning::chain::Listen;
 use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
+use lightning::chain::chaininterface::ConfirmationTarget::{
+    MaximumFeeEstimate,
+    UrgentOnChainSweep,
+    MinAllowedAnchorChannelRemoteFee,
+    MinAllowedNonAnchorChannelRemoteFee,
+    AnchorChannelFee,
+    NonAnchorChannelFee,
+    ChannelCloseMinimum,
+    OutputSpendingFee,
+};
 use bitcoin::blockdata::transaction::Transaction;
+use tokio::runtime::Handle;
 
 #[derive(Clone)]
 pub struct BitcoindClientExercise {
@@ -30,17 +41,18 @@ pub struct BitcoindClientExercise {
     host: String,
     port: u16,
     rpc_user: String,
-    rpc_password: String
+    rpc_password: String,
+    pub handle: tokio::runtime::Handle,
 }
 
-impl BitcoindClientExercise {
-    async fn send_to_network(&self, tx_hex: String) -> bool {
-        self.bitcoind_rpc_client
-            .call_method::<serde_json::Value>("sendrawtransaction", &[tx_hex.into()])
-            .await
-            .is_ok()
-    }
+pub struct FeeRateEstimate {
+    pub target_1_block: u32,
+    pub target_3_block: u32,
+    pub target_6_block: u32,
+    pub target_144_block: u32,
+    pub target_1008_block: u32,
 }
+
 
 impl BlockSource for BitcoindClientExercise {
     fn get_header<'a>(
@@ -87,7 +99,8 @@ impl BitcoindClientExercise {
             port,
             rpc_user,
             rpc_password,
-            network
+            network,
+            handle: tokio::runtime::Handle::current()
         };
 
         Ok(client)
@@ -130,9 +143,61 @@ pub async fn poll_for_blocks2<L: Listen>(bitcoind: BitcoindClientExercise, netwo
 
 impl BroadcasterInterface for BitcoindClientExercise {
     fn broadcast_transactions(&self, txs: &[&Transaction]) {
-        for tx in txs {
+        for tx in txs { 
             let hex_string = tx.to_hex();
-            self.send_to_network(hex_string);
+            self.sendrawtransaction(hex_string);
+        }
+    }
+}
+
+impl BitcoindClientExercise {
+    fn sendrawtransaction(&self, tx_hex: String) {
+        let bitcoind_rpc_client = self.bitcoind_rpc_client.clone();
+        self.handle.spawn(async move {
+            let tx_json = serde_json::json!(tx_hex);
+
+            if let Err(e) = bitcoind_rpc_client
+                .call_method::<serde_json::Value>("sendrawtransaction", &[tx_json])
+                .await
+            {
+                eprintln!("Failed to broadcast transaction: {}", e);
+            } else {
+                println!("Successfully broadcasted transaction: {}", tx_hex);
+            }
+        });
+    }
+
+    fn rpc_estimate_smart_fee(&self) -> FeeRateEstimate {
+        FeeRateEstimate {
+            target_1_block: 6,
+            target_3_block: 5,
+            target_6_block: 5,
+            target_144_block: 4,
+            target_1008_block: 2,
+        }
+    }
+
+}
+
+impl FeeEstimator for BitcoindClientExercise {
+    fn get_est_sat_per_1000_weight(&self, confirmation_target: ConfirmationTarget) -> u32 {
+        let fee_rates = self.rpc_estimate_smart_fee();
+        match confirmation_target {
+            MaximumFeeEstimate => fee_rates.target_1_block,
+
+            UrgentOnChainSweep => fee_rates.target_1_block,
+
+            OutputSpendingFee => fee_rates.target_1_block,
+
+            NonAnchorChannelFee => fee_rates.target_6_block,
+
+            AnchorChannelFee => fee_rates.target_1008_block,
+
+            ChannelCloseMinimum => fee_rates.target_1008_block,
+
+            MinAllowedNonAnchorChannelRemoteFee => fee_rates.target_1008_block,
+
+            MinAllowedAnchorChannelRemoteFee => fee_rates.target_1008_block
         }
     }
 }

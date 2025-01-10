@@ -39,6 +39,11 @@ pattern = "**/*.rs"
 start = "rust-analyzer"
 
 [[ports]]
+localPort = 8332
+externalPort = 3002
+exposeLocalhost = true
+
+[[ports]]
 localPort = 8333
 externalPort = 3001
 

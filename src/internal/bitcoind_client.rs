@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use bitcoin::hash_types::{BlockHash};
+use bitcoin::hash_types::{BlockHash, Txid};
 use bitcoin::hashes::Hash;
 use bitcoin::{Network };
 use lightning_block_sync::http::HttpEndpoint;
@@ -16,7 +16,7 @@ use bitcoin::blockdata::transaction::Transaction;
 use std::sync::Arc;
 use bitcoin::consensus::{encode, Decodable, Encodable};
 use crate::internal::convert::{
-    ListUnspentResponse, NewAddress, SignedTx, BlockchainInfo, AddressPubkey
+    ListUnspentResponse, NewAddress, SignedTx, BlockchainInfo, AddressPubkey, MempoolInfo
 };
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
 use tokio::runtime::Handle;
@@ -114,6 +114,13 @@ impl BitcoindClient {
             .unwrap();
         //println!("Signed Tx: {}", &signed_tx.hex);
         signed_tx
+    }
+
+    pub async fn get_raw_mempool(&self) -> MempoolInfo {
+    self.bitcoind_rpc_client
+    .call_method("getrawmempool", &[])
+    .await
+    .unwrap()
     }
 }
 

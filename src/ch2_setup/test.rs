@@ -1,7 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use lightning::chain::chaininterface::{
-  ConfirmationTarget
-};
+use crate::internal;
+use internal::bitcoind_client::BitcoindClient;
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
@@ -11,6 +10,7 @@ use crate::ch2_setup::persist_exercise::{
 use crate::ch2_setup::fee_estimator_exercise::{
     get_est_sat_per_1000_weight
 };
+use crate::ch2_setup::helpers::{get_tx_hex};
 use lightning::util::persist::KVStore;
 use base64;
 use bitcoin::{Network};
@@ -21,7 +21,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use lightning::chain::Listen;
 use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
@@ -29,6 +28,9 @@ use lightning_block_sync::SpvClient;
 use bitcoin::blockdata::block::Header;
 use lightning::chain::transaction::TransactionData;
 use bitcoin::blockdata::block::Block;
+use bitcoin::consensus::{encode};
+use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
+use tokio::time::{sleep, Duration};
 
 pub struct Listener {
 
@@ -154,9 +156,49 @@ async fn test_fees() {
     let high_fee_target = ConfirmationTarget::UrgentOnChainSweep;
     let low_fee_target = ConfirmationTarget::MinAllowedAnchorChannelRemoteFee;
 
+    let host = "0.0.0.0".to_string();
+    let port: u16 = 18443;
+    let rpc_user = "bitcoind".to_string();
+    let rpc_password = "bitcoind".to_string();
+    let network = Network::Regtest;
+
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+
     // check UrgentOnChainSweep
-    assert_eq!(get_est_sat_per_1000_weight(low_fee_target), 500);
+    let high_fees = bitcoind_rpc_client.get_est_sat_per_1000_weight(high_fee_target);
+    assert_eq!(high_fees, 6000);
 
     // check MinAllowedAnchorChannelRemoteFee
-    assert_eq!(get_est_sat_per_1000_weight(high_fee_target), 1500);
+    let low_fees = bitcoind_rpc_client.get_est_sat_per_1000_weight(low_fee_target);
+    assert_eq!(low_fees, 2000);
+}
+
+#[tokio::test]
+async fn test_broadcast() {
+
+    let host = "0.0.0.0".to_string();
+    let port: u16 = 18443;
+    let rpc_user = "bitcoind".to_string();
+    let rpc_password = "bitcoind".to_string();
+    let network = Network::Regtest;
+
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+
+    let internal_bitcoind = BitcoindClient::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+
+    let tx = get_tx_hex().await;
+
+    let tx_hex = encode::serialize_hex(&tx);
+
+    bitcoind_rpc_client.broadcast_transactions(&[&tx]);
+
+    tokio::time::sleep(Duration::from_millis(250)).await;
+
+    let mempool = internal_bitcoind.get_raw_mempool().await;
+
+    let txid = tx.compute_txid().to_string();
+
+    //assert_eq!(mempool.transaction_ids, vec!["0.0.0.0".to_string()]);
+
+    assert!(mempool.transaction_ids.contains(&txid));
 }
