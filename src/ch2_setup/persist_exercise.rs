@@ -21,108 +21,82 @@ impl SimpleStore {
     }
 }
 
-pub struct SimpleChannelMonitor {
-  // Tracks the version/sequence number of monitor updates
-  latest_update_id: u64,
-  // Script used to send funds back to us when channel closes
-  destination_script: ScriptBuf,
-  // Script used to send funds to counterparty when channel closes
-  counterparty_payment_script: ScriptBuf,
-  // Unique identifier for deriving channel-specific keys
-  channel_keys_id: [u8; 32],
-  // Base point for generating revocation keys (used to punish cheating)
-  holder_revocation_basepoint: RevocationBasepoint,
-  // Unique identifier for this channel
-  channel_id: ChannelId,
-  // The transaction output that funded this channel and its script
-  funding_info: (OutPoint, ScriptBuf),
-  // Current commitment transaction from counterparty (None if not yet received)
-  current_counterparty_commitment_txid: Option<Txid>,
-  // Previous commitment transaction from counterparty (for revocation)
-  prev_counterparty_commitment_txid: Option<Txid>,
-  // Script that controls the funding output (2-of-2 multisig)
-  funding_redeemscript: ScriptBuf,
-  // Total value of the channel in satoshis
-  channel_value_satoshis: u64,
+/// Helper function to create the full key path from namespaces and key
+fn create_key_path(primary: &str, secondary: &str, key: &str) -> String {
+    if secondary.is_empty() {
+        format!("{}/{}", primary, key)
+    } else {
+        format!("{}/{}/{}", primary, secondary, key)
+    }
 }
 
+/// Helper function to get the last part of a path (the key name)
+fn get_key_name(full_path: &str) -> String {
+    full_path.split('/')
+        .last()
+        .unwrap_or("")
+        .to_string()
+}
+
+
 impl KVStore for SimpleStore {
-  fn write(
-    & self,
-    primary_namespace: &str,
-    secondary_namespace: &str,
-    key: &str,
-    buf: &[u8],
-  ) -> Result<()> {
-    // Combine namespaces and key into a single string
-    let full_key = if secondary_namespace.is_empty() {
-        format!("{}/{}", primary_namespace, key)
-    } else {
-        format!("{}/{}/{}", primary_namespace, secondary_namespace, key)
-    };
-  
-    // Get write access to the HashMap
-    let mut data = self.data.write().unwrap();
-    data.insert(full_key, buf.to_vec());
-    Ok(())
-  }
-
-  fn read(
-    &self, primary_namespace: &str, secondary_namespace: &str, key: &str,
-  ) -> Result<Vec<u8>> {
-    // Combine namespaces into full key
-    let full_key = if secondary_namespace.is_empty() {
-        format!("{}/{}", primary_namespace, key)
-    } else {
-        format!("{}/{}/{}", primary_namespace, secondary_namespace, key)
-    };
-
-    // Get read access to the HashMap
-    let data = self.data.read().unwrap();
-
-    // Clone the value if it exists
-     Ok(data.get(&full_key).cloned().expect("Key exists"))
+    fn write(
+        &self,
+        primary_namespace: &str,
+        secondary_namespace: &str,
+        key: &str,
+        value: &[u8],
+    ) -> Result<()> {
+        let full_key = create_key_path(primary_namespace, secondary_namespace, key);
+        let mut store = self.data.write().unwrap();
+        store.insert(full_key, value.to_vec());
+        Ok(())
     }
 
-  fn remove(
-      &self, primary_namespace: &str, secondary_namespace: &str, key: &str, lazy: bool,
-    ) -> Result<()>{
-    // Combine namespaces into full key
-    let full_key = if secondary_namespace.is_empty() {
-        format!("{}/{}", primary_namespace, key)
-    } else {
-        format!("{}/{}/{}", primary_namespace, secondary_namespace, key)
-    };
+    fn read(
+        &self,
+        primary_namespace: &str,
+        secondary_namespace: &str,
+        key: &str,
+    ) -> Result<Vec<u8>> {
+        let full_key = create_key_path(primary_namespace, secondary_namespace, key);
+        let store = self.data.read().unwrap();
 
-    // Get write access to remove the key
-    let mut data = self.data.write().unwrap();
-    data.remove(&full_key);
+        let result = store.get(&full_key)
+            .cloned()
+            .expect("Key exists");
 
-    Ok(())
+        Ok(result)
     }
 
-  fn list(
-      &self, primary_namespace: &str, secondary_namespace: &str,
+    fn remove(
+        &self,
+        primary_namespace: &str,
+        secondary_namespace: &str,
+        key: &str,
+        _lazy: bool,
+    ) -> Result<()> {
+        let full_key = create_key_path(primary_namespace, secondary_namespace, key);
+        let mut store = self.data.write().unwrap();
+        store.remove(&full_key);
+        Ok(())
+    }
+
+    fn list(
+        &self,
+        primary_namespace: &str,
+        secondary_namespace: &str,
     ) -> Result<Vec<String>> {
+        let prefix = create_key_path(primary_namespace, secondary_namespace, "");
+        let store = self.data.read().unwrap();
 
-    // Get read access to the HashMap
-    let data = self.data.read().unwrap();
-  
-    // Create the prefix to match against
-    let prefix = if secondary_namespace.is_empty() {
-        format!("{}/", primary_namespace)
-    } else {
-        format!("{}/{}/", primary_namespace, secondary_namespace)
-    };
-  
-    // Filter keys that match the prefix and extract the final key component
-    let matching_keys: Vec<String> = data.keys()
-        .filter(|k| k.starts_with(&prefix))
-        .map(|k| k[prefix.len()..].to_string())  // Remove prefix to get final key
-        .collect();
-  
-    Ok(matching_keys)
+        let mut result = Vec::new();
+        for full_key in store.keys() {
+            if full_key.starts_with(&prefix) {
+                result.push(get_key_name(full_key));
+            }
+        }
 
-      }
-  }
-
+        Ok(result)
+    }
+    }

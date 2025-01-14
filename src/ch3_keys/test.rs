@@ -48,21 +48,16 @@ fn test_new_simple_key_manager() {
     keys_interface_impl.channel_master_key.to_string(),
 "tprv8c8LX21WH7wWXe79pUjDm1XKxEK2bNZNq6yd8eYfEfLLA6r4TkJAEcBthdbQjJ4UYcBDBku6H6hdWQzKHUhrbNQn71RFjNzmD8Tf7ZGC6zH".to_string()
   );
-  // check channel_child_index
-  assert_eq!(
-    keys_interface_impl.channel_child_index.load(Ordering::SeqCst),
-      child_index
-  );
 }
 
 #[test]
 fn test_unifed_onchain_offchain_wallet() {
-  let seed = [1_u8; 64];
+  let seed = [1_u8; 32];
   let keys_interface_impl = unified_onchain_offchain_wallet(seed);
     // check channel_master_key
     assert_eq!(
       keys_interface_impl.get_node_secret_key().display_secret().to_string(),
-"67cf3832ea5f1e0abab97340883623accc3776d9fd7b6cf763e1243d81704219".to_string()
+"d34c19d25ca7c93b17121c6fbb77418b48a2de73080d82e8f2b4e1ba57679514".to_string()
     );
 }
 

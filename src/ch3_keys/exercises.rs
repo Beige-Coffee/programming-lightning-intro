@@ -32,7 +32,6 @@ pub struct SimpleKeysManager {
     pub coop_close_pubkey: PublicKey,
     pub channel_master_key: Xpriv,
     pub inbound_payment_key: SecretKey,
-    pub channel_child_index: AtomicUsize,
     pub seed: [u8; 32],
 }
 
@@ -67,6 +66,13 @@ fn get_public_key(private_key: SecretKey) -> PublicKey {
     public_key
 }
 
+fn get_current_time() -> Duration {
+    let cur = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
+    cur
+}
+
 pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
     let master_key = get_master_key(seed);
 
@@ -91,14 +97,13 @@ pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
         coop_close_pubkey: coop_close_pubkey,
         channel_master_key: channel_master_key,
         inbound_payment_key: inbound_payment_key,
-        channel_child_index: AtomicUsize::new(0),
         seed: seed,
     }
 }
 
-pub fn unified_onchain_offchain_wallet(seed: [u8; 64]) -> KeysManager {
-    // Other supported networks include mainnet (Bitcoin), Regtest, Signet
-    let master_xprv = Xpriv::new_master(Network::Testnet, &seed).unwrap();
+pub fn unified_onchain_offchain_wallet2(seed: [u8; 64]) -> KeysManager {
+
+    let master_xprv = Xpriv::new_master(Network::Regtest, &seed).unwrap();
     let secp = Secp256k1::new();
     let xprv: Xpriv = master_xprv
         .derive_priv(&secp, &ChildNumber::from_hardened_idx(535).unwrap())
@@ -110,5 +115,20 @@ pub fn unified_onchain_offchain_wallet(seed: [u8; 64]) -> KeysManager {
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
     let keys_manager = KeysManager::new(&ldk_seed, cur.as_secs(), cur.subsec_nanos());
+    keys_manager
+}
+
+pub fn unified_onchain_offchain_wallet(seed: [u8; 32]) -> KeysManager {
+
+    let master_key = get_master_key(seed);
+
+    let ldk_key = get_hardened_extended_child_private_key(master_key, 535);
+
+    let ldk_seed = ldk_key.private_key.secret_bytes();
+
+    let cur = get_current_time();
+    
+    let keys_manager = KeysManager::new(&ldk_seed, cur.as_secs(), cur.subsec_nanos());
+    
     keys_manager
 }
