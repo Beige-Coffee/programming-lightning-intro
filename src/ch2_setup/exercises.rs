@@ -17,6 +17,11 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use lightning::chain::Listen;
+use lightning::routing::gossip::{P2PGossipSync};
+use lightning::routing::scoring::{ProbabilisticScoringDecayParameters, ProbabilisticScorer, ProbabilisticScoringFeeParameters};
+use lightning::routing::router::{DefaultRouter};
+use lightning::util::logger::Logger;
+use lightning::sign::{EntropySource};
 use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
@@ -201,3 +206,4 @@ impl FeeEstimator for BitcoindClientExercise {
         }
     }
 }
+
