@@ -17,11 +17,6 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use lightning::chain::Listen;
-use lightning::routing::gossip::{P2PGossipSync};
-use lightning::routing::scoring::{ProbabilisticScoringDecayParameters, ProbabilisticScorer, ProbabilisticScoringFeeParameters};
-use lightning::routing::router::{DefaultRouter};
-use lightning::util::logger::Logger;
-use lightning::sign::{EntropySource};
 use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
@@ -65,7 +60,8 @@ impl BlockSource for BitcoindClientExercise {
     ) -> AsyncBlockSourceResult<'a, BlockHeaderData> {
         Box::pin(async move { 
             
-            self.bitcoind_rpc_client.get_header(header_hash, height_hint).await
+            let header_hash = serde_json::json!(header_hash.to_string());
+            Ok(self.bitcoind_rpc_client.call_method("getblockheader", &[header_hash]).await?)
         
         })
     }
@@ -206,4 +202,3 @@ impl FeeEstimator for BitcoindClientExercise {
         }
     }
 }
-

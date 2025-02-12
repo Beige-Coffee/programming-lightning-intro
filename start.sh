@@ -18,7 +18,7 @@ if [[ "$already_running" =~ "blocks" ]]; then
 else
   echo "Starting bitcoind..."
   bitcoind -regtest -conf=$(pwd)/bitcoin.conf -datadir=$BITCOIN_DATA_DIR &
-  sleep 2
+  sleep 5
 fi
 
 # Wait for bitcoind to initialize

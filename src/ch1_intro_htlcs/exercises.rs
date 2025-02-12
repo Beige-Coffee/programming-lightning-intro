@@ -18,13 +18,27 @@ pub fn two_of_two_multisig_witness_script(
     pubkey2: &PublicKey,
 ) -> ScriptBuf {
     
-    todo!()
-    
+    Builder::new()
+        .push_int(2)
+        .push_key(pubkey1)
+        .push_key(pubkey2)
+        .push_int(2)
+        .push_opcode(opcodes::OP_CHECKMULTISIG)
+    .into_script()
 }
 
 pub fn timelocked_p2pkh(pubkey: &PublicKey, blocks_or_seconds: i64) -> ScriptBuf {
     
-    todo!()
+    Builder::new()
+        .push_int(blocks_or_seconds)
+        .push_opcode(opcodes::OP_CSV)
+        .push_opcode(opcodes::OP_DROP)
+        .push_opcode(opcodes::OP_DUP)
+        .push_opcode(opcodes::OP_HASH160)
+        .push_pubkey_hash(pubkey)
+        .push_opcode(opcodes::OP_EQUALVERIFY)
+        .push_opcode(opcodes::OP_CHECKSIG)
+        .into_script()
     
 }
 
@@ -37,7 +51,14 @@ pub fn build_funding_transaction(
 
     let output_script = two_of_two_multisig_witness_script(alice_pubkey, bob_pubkey);
 
-    todo!()
+    let output = build_output(amount, output_script.to_p2wsh());
+
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO;
+
+    let transaction = build_transaction(version, locktime, txins, vec![output]);
+
+    transaction
 }
 
 pub fn build_refund_transaction(
@@ -48,8 +69,23 @@ pub fn build_refund_transaction(
     bob_balance: u64
 ) -> Transaction {
     
-    todo!()
+    let alice_output_script = p2wpkh_output_script(alice_pubkey);
+
+    let bob_output_script = p2wpkh_output_script(bob_pubkey);
+
     
+    let alice_output = build_output(alice_balance, alice_output_script);
+
+    let bob_output = build_output(bob_balance, bob_output_script);
+
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO;
+    
+    let transaction = build_transaction(version, locktime, vec![funding_txin],
+                                       vec![alice_output, bob_output]);
+
+    transaction
+
 }
 
 pub fn generate_revocation_pubkey(

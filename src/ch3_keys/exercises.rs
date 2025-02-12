@@ -20,19 +20,69 @@ use bitcoin::{Block, OutPoint, Transaction, TxIn, TxOut};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
-use internal::channel_manager::ChannelManager;
 use lightning::sign::KeysManager;
 use std::time::{Duration, SystemTime};
+use bitcoin::hashes::sha256::Hash as Sha256;
+use bitcoin::hashes::sha256d::Hash as Sha256dHash;
+use bitcoin::secp256k1::Message;
+use bitcoin::hashes::{Hash, HashEngine};
 
 #[derive(Debug)]
 pub struct SimpleKeysManager {
+    pub secp_ctx: Secp256k1<secp256k1::All>,
     pub node_secret: SecretKey,
     pub node_id: PublicKey,
     pub unilateral_close_pubkey: PublicKey,
     pub coop_close_pubkey: PublicKey,
     pub channel_master_key: Xpriv,
     pub inbound_payment_key: SecretKey,
+    pub channel_child_index: AtomicUsize,
     pub seed: [u8; 32],
+}
+
+impl SimpleKeysManager {
+    pub(crate) fn new(seed: [u8; 32]) -> SimpleKeysManager {
+
+        let secp_ctx = Secp256k1::new();
+        
+        let master_key = get_master_key(seed);
+
+        let node_secret = get_hardened_child_private_key(master_key, 0);
+
+        let node_id = get_public_key(node_secret);
+
+        let unilateral_close_private_key = get_hardened_child_private_key(master_key, 1);
+        let unilateral_close_pubkey = get_public_key(unilateral_close_private_key);
+
+        let coop_close_private_key = get_hardened_child_private_key(master_key, 2);
+        let coop_close_pubkey = get_public_key(unilateral_close_private_key);
+
+        let channel_master_key = get_hardened_extended_child_private_key(master_key, 3);
+
+        let inbound_payment_key = get_hardened_child_private_key(master_key, 5);
+
+        SimpleKeysManager {
+            secp_ctx: secp_ctx,
+            node_secret: node_secret,
+            node_id: node_id,
+            unilateral_close_pubkey: unilateral_close_pubkey,
+            coop_close_pubkey: coop_close_pubkey,
+            channel_master_key: channel_master_key,
+            inbound_payment_key: inbound_payment_key,
+            channel_child_index: AtomicUsize::new(0),
+            seed: seed,
+        }
+    }
+
+    pub fn sign_gossip_message(&self, msg: &[u8]) -> Signature {
+        let double_sha256_hash = Sha256dHash::hash(msg);
+        let msg_hash = hash_to_message(double_sha256_hash);
+        self.secp_ctx.sign_ecdsa(&msg_hash, &self.node_secret)
+    }
+}
+
+fn hash_to_message(hash: Sha256dHash) -> Message {
+    Message::from_digest_slice(&hash[..]).unwrap()
 }
 
 fn get_master_key(seed: [u8; 32]) -> Xpriv {
@@ -66,14 +116,9 @@ fn get_public_key(private_key: SecretKey) -> PublicKey {
     public_key
 }
 
-fn get_current_time() -> Duration {
-    let cur = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    cur
-}
-
 pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
+    let secp_ctx = Secp256k1::new();
+    
     let master_key = get_master_key(seed);
 
     let node_secret = get_hardened_child_private_key(master_key, 0);
@@ -91,19 +136,21 @@ pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
     let inbound_payment_key = get_hardened_child_private_key(master_key, 5);
 
     SimpleKeysManager {
+        secp_ctx: secp_ctx,
         node_secret: node_secret,
         node_id: node_id,
         unilateral_close_pubkey: unilateral_close_pubkey,
         coop_close_pubkey: coop_close_pubkey,
         channel_master_key: channel_master_key,
         inbound_payment_key: inbound_payment_key,
+        channel_child_index: AtomicUsize::new(0),
         seed: seed,
     }
 }
 
-pub fn unified_onchain_offchain_wallet2(seed: [u8; 64]) -> KeysManager {
-
-    let master_xprv = Xpriv::new_master(Network::Regtest, &seed).unwrap();
+pub fn unified_onchain_offchain_wallet(seed: [u8; 64]) -> KeysManager {
+    // Other supported networks include mainnet (Bitcoin), Regtest, Signet
+    let master_xprv = Xpriv::new_master(Network::Testnet, &seed).unwrap();
     let secp = Secp256k1::new();
     let xprv: Xpriv = master_xprv
         .derive_priv(&secp, &ChildNumber::from_hardened_idx(535).unwrap())
@@ -115,20 +162,5 @@ pub fn unified_onchain_offchain_wallet2(seed: [u8; 64]) -> KeysManager {
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
     let keys_manager = KeysManager::new(&ldk_seed, cur.as_secs(), cur.subsec_nanos());
-    keys_manager
-}
-
-pub fn unified_onchain_offchain_wallet(seed: [u8; 32]) -> KeysManager {
-
-    let master_key = get_master_key(seed);
-
-    let ldk_key = get_hardened_extended_child_private_key(master_key, 535);
-
-    let ldk_seed = ldk_key.private_key.secret_bytes();
-
-    let cur = get_current_time();
-    
-    let keys_manager = KeysManager::new(&ldk_seed, cur.as_secs(), cur.subsec_nanos());
-    
     keys_manager
 }

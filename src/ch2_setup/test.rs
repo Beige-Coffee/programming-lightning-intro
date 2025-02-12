@@ -4,8 +4,14 @@ use internal::bitcoind_client::BitcoindClient;
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
+use crate::ch2_setup::bitcoin_client::{
+    BitcoinClient,
+};
 use crate::ch2_setup::persist_exercise::{
     SimpleStore
+};
+use crate::ch2_setup::payment_exercise::{
+    send_payment
 };
 use crate::ch2_setup::fee_estimator_exercise::{
     get_est_sat_per_1000_weight
@@ -82,7 +88,7 @@ async fn get_bitcoind() {
         .get_block(&hash)
         .await
         .expect("Should fetch block");
-    
+
 }
 
 #[tokio::test]
@@ -93,8 +99,20 @@ async fn test_new_bitcoind() {
     let rpc_user = "bitcoind".to_string();
     let rpc_password = "bitcoind".to_string();
     let network = Network::Regtest;
-    
+
     let bitcoind_rpc_client = BitcoindClientExercise::new(host, port, rpc_user, rpc_password, network).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_new_bitcoind2() {
+
+    let host = "0.0.0.0".to_string();
+    let port: u16 = 18443;
+    let rpc_user = "bitcoind".to_string();
+    let rpc_password = "bitcoind".to_string();
+    let network = Network::Regtest;
+
+    let bitcoind_rpc_client = BitcoinClient::new(host, port, rpc_user, rpc_password, network).await.unwrap();
 }
 
 #[tokio::test]
@@ -138,7 +156,7 @@ async fn test_simple_store() {
     let data = vec![1, 2, 3, 4, 5]; 
     simple_store.write("test", "test2", "key1", &data);
     simple_store.write("test", "test2", "key2", &data);
-    
+
     match simple_store.read("test", "test2", "key1") {
         Ok(data) => println!("Read data: {:?}", data),
         Err(e) => println!("Error reading data: {}", e),
@@ -201,4 +219,10 @@ async fn test_broadcast() {
     //assert_eq!(mempool.transaction_ids, vec!["0.0.0.0".to_string()]);
 
     assert!(mempool.transaction_ids.contains(&txid));
+}
+
+#[tokio::test]
+async fn test_payment() {
+
+
 }

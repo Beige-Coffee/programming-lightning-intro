@@ -20,7 +20,6 @@ use bitcoin::{Block, OutPoint, PublicKey, Transaction, TxIn, TxOut};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use internal::bitcoind_client::BitcoindClient;
 use internal::builder::Builder;
-use internal::channel_manager::ChannelManager;
 
 #[derive(Debug)]
 pub struct SimpleKeysManager {
