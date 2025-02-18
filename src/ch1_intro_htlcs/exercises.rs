@@ -18,27 +18,13 @@ pub fn two_of_two_multisig_witness_script(
     pubkey2: &PublicKey,
 ) -> ScriptBuf {
     
-    Builder::new()
-        .push_int(2)
-        .push_key(pubkey1)
-        .push_key(pubkey2)
-        .push_int(2)
-        .push_opcode(opcodes::OP_CHECKMULTISIG)
-    .into_script()
+    unimplemented!()
+    
 }
 
 pub fn timelocked_p2pkh(pubkey: &PublicKey, blocks_or_seconds: i64) -> ScriptBuf {
     
-    Builder::new()
-        .push_int(blocks_or_seconds)
-        .push_opcode(opcodes::OP_CSV)
-        .push_opcode(opcodes::OP_DROP)
-        .push_opcode(opcodes::OP_DUP)
-        .push_opcode(opcodes::OP_HASH160)
-        .push_pubkey_hash(pubkey)
-        .push_opcode(opcodes::OP_EQUALVERIFY)
-        .push_opcode(opcodes::OP_CHECKSIG)
-        .into_script()
+    unimplemented!()
     
 }
 
@@ -49,16 +35,7 @@ pub fn build_funding_transaction(
     amount: u64,
 ) -> Transaction {
 
-    let output_script = two_of_two_multisig_witness_script(alice_pubkey, bob_pubkey);
-
-    let output = build_output(amount, output_script.to_p2wsh());
-
-    let version = Version::TWO;
-    let locktime = LockTime::ZERO;
-
-    let transaction = build_transaction(version, locktime, txins, vec![output]);
-
-    transaction
+    unimplemented!()
 }
 
 pub fn build_refund_transaction(
@@ -69,22 +46,7 @@ pub fn build_refund_transaction(
     bob_balance: u64
 ) -> Transaction {
     
-    let alice_output_script = p2wpkh_output_script(alice_pubkey);
-
-    let bob_output_script = p2wpkh_output_script(bob_pubkey);
-
-    
-    let alice_output = build_output(alice_balance, alice_output_script);
-
-    let bob_output = build_output(bob_balance, bob_output_script);
-
-    let version = Version::TWO;
-    let locktime = LockTime::ZERO;
-    
-    let transaction = build_transaction(version, locktime, vec![funding_txin],
-                                       vec![alice_output, bob_output]);
-
-    transaction
+    unimplemented!()
 
 }
 
@@ -93,7 +55,7 @@ pub fn generate_revocation_pubkey(
     per_commitment_point: PublicKey,
 ) -> PublicKey {
     
-    todo!()
+    unimplemented!()
     
 }
 
@@ -103,7 +65,7 @@ pub fn to_local(
     to_self_delay: i64,
 ) -> ScriptBuf {
 
-    todo!()
+    unimplemented!()
     
 }
 
@@ -117,7 +79,7 @@ pub fn build_commitment_transaction(
     remote_amount: u64,
 ) -> Transaction {
     
-    todo!()
+    unimplemented!()
     
 }
 
@@ -135,7 +97,7 @@ pub fn build_htlc_commitment_transaction(
     remote_amount: u64,
 ) -> Transaction {
 
-    todo!()
+    unimplemented!()
   
 }
 
@@ -147,5 +109,7 @@ pub fn build_htlc_timeout_transaction(
     cltv_expiry: u32,
     htlc_amount: u64,
 ) -> Transaction {
-    todo!()
+    
+    unimplemented!()
+    
 }

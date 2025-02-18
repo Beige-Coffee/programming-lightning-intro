@@ -1,5 +1,6 @@
 { pkgs }: {
 	deps = [
+   pkgs.netcat-openbsd
    pkgs.rustup
     pkgs.electrs
     pkgs.bitcoin
