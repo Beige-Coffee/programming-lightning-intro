@@ -8,3 +8,4 @@ pub mod payment_exercise;
 pub mod bitcoin_client;
 pub mod test;
 pub mod peer_listener_exercise;
+pub mod channel_exercises;
