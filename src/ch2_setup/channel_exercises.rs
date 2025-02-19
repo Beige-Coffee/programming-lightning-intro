@@ -66,9 +66,9 @@ impl ChannelMonitor{
   pub fn block_connected(
     &mut self,
     header: Header,
-    txdata: TransactionData,
+    txdata: &TransactionData,
     height: u32,
-    broadcaster: BitcoindClient
+    broadcaster: &BitcoindClient
   ) {
     
     // for each transaction in data
@@ -166,16 +166,16 @@ impl ChainMonitor {
 
   fn transactions_confirmed(&self,
     header: Header,
-    txdata: TransactionData,
+    txdata: &TransactionData,
     height: u32,
-    broadcaster: BitcoindClient
+    broadcaster: &BitcoindClient
   ) {
-    for (_, monitor) in self.monitors.into_iter() {
+    for (_, mut monitor) in self.monitors.iter_mut() {
       monitor.block_connected(
         header,
-        txdata,
+        txdata.clone(),
         height,
-        self.broadcaster);
+        self.broadcaster.clone());
     }
   }
 }
