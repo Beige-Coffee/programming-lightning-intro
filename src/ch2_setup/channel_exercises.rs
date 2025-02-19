@@ -138,7 +138,8 @@ impl ChannelMonitor {
 
 pub struct ChainMonitor {
   monitors: HashMap<OutPoint, ChannelMonitor>,
-  persister: FileStore
+  persister: FileStore,
+  broadcaster: BitcoindClient
 }
 
 impl ChainMonitor {
@@ -162,5 +163,19 @@ impl ChainMonitor {
     channel_monitor.update_monitor(update);
     self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
   }
-    
+
+  fn transactions_confirmed(&self,
+    header: Header,
+    txdata: TransactionData,
+    height: u32,
+    broadcaster: BitcoindClient
+  ) {
+    for (_, monitor) in self.monitors.into_iter() {
+      monitor.block_connected(
+        header,
+        txdata,
+        height,
+        self.broadcaster);
+    }
   }
+}
