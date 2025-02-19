@@ -158,7 +158,7 @@ impl ChainMonitor {
     }
 
   fn update_channel(&mut self, funding_outpoint: OutPoint, update: ChannelMonitorUpdate) {
-    let channel_monitor = self.monitors.get(&funding_outpoint).unwrap();
+    let channel_monitor = self.monitors.get_mut(&funding_outpoint).unwrap();
     channel_monitor.update_monitor(update);
     self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
   }
