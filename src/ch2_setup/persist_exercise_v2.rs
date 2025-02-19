@@ -2,10 +2,22 @@
 use std::fs;
 use std::path::PathBuf;
 use std::io::{self, Read, Write};
+use crate::ch2_setup::channel_exercises::ChannelMonitor;
+use lightning::chain::transaction::OutPoint;
 
 pub struct FileStore {
   data_dir: PathBuf
 }
+
+pub enum ChannelMonitorUpdateStatus {
+  Completed,
+  UnrecoverableError
+}
+
+/// The primary namespace under which [`ChannelMonitor`]s will be persisted.
+pub const CHANNEL_MONITOR_PERSISTENCE_PRIMARY_NAMESPACE: &str = "monitors";
+/// The secondary namespace under which [`ChannelMonitor`]s will be persisted.
+pub const CHANNEL_MONITOR_PERSISTENCE_SECONDARY_NAMESPACE: &str = "";
 
 impl FileStore {
     pub fn new(data_dir: PathBuf) -> Self {
@@ -35,6 +47,22 @@ impl FileStore {
         file.write_all(data)?;
         Ok(())
     }
+
+    pub fn persist_channel(
+        &self, funding_txo: OutPoint, monitor: ChannelMonitor,
+    ) -> ChannelMonitorUpdateStatus {
+        let key = format!("{}_{}", funding_txo.txid.to_string(), funding_txo.index);
+        match self.write(
+            CHANNEL_MONITOR_PERSISTENCE_PRIMARY_NAMESPACE,
+            CHANNEL_MONITOR_PERSISTENCE_SECONDARY_NAMESPACE,
+            &key,
+            &monitor.encode(),
+        ) {
+            Ok(()) => ChannelMonitorUpdateStatus::Completed,
+            Err(_) => ChannelMonitorUpdateStatus::UnrecoverableError,
+        }
+    }
+
 }
 
 impl FileStore {

@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::internal;
+use crate::ch2_setup::persist_exercise_v2::{FileStore, ChannelMonitorUpdateStatus};
 use bitcoin::Transaction;
 use bitcoin::Block;
 use bitcoin::secp256k1::PublicKey;
@@ -13,10 +14,16 @@ use internal::bitcoind_client::BitcoindClient;
 use lightning::chain::chaininterface::BroadcasterInterface;
 use bitcoin::block::Header;
 
+//
+//Channel Monitor
+//
 #[derive(Clone)]
 pub struct CounterpartyCommitmentSecrets {
   old_secrets: [([u8; 32], u64); 49],
 }
+
+#[derive(Hash, Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct Preimage(pub [u8; 32]);
 
 pub type TransactionData = Vec<Transaction>;
 
@@ -25,10 +32,23 @@ pub struct ChannelMonitor {
   channel_id: ChannelId,
   funding_outpoint: OutPoint,
   channel_value_sats: u64,
-  current_commitment_txid: Option<Txid>,
+  current_commitment_tx: Option<Transaction>,
   best_block: BestBlock,
-  commitment_secrets: CounterpartyCommitmentSecrets,
+  commitment_secrets: Vec<[u8; 32]>,
+  preimages: Vec<Preimage>,
   outputs_to_watch: HashMap<Txid, Vec<(u32, ScriptBuf)>>,
+}
+
+enum ChannelMonitorUpdate {
+  LatestHolderCommitmentTXInfo {
+    commitment_tx: Transaction,
+  },
+  PaymentPreimage {
+    payment_preimage: Preimage
+  },
+  CommitmentSecret {
+    secret: [u8; 32]
+  }
 }
 
 struct WatchOutput {
@@ -36,6 +56,11 @@ struct WatchOutput {
   input_idx: u32,
   script: ScriptBuf
 }
+
+
+//
+// Exercise 1
+//
 
 impl ChannelMonitor{
   pub fn block_connected(
@@ -84,6 +109,58 @@ impl ChannelMonitor{
     tx.clone()
   }
 
+  pub fn encode(self) -> [u8; 10] {
+    [0; 10] // returning a dummy array of 10 bytes
+  }
+
 }
 
-  
+
+impl ChannelMonitor {
+  pub fn update_monitor(&mut self, update: ChannelMonitorUpdate) {
+    match update {
+      ChannelMonitorUpdate::LatestHolderCommitmentTXInfo {commitment_tx} => {
+      self.current_commitment_tx = Some(commitment_tx);
+      },
+      ChannelMonitorUpdate::PaymentPreimage {payment_preimage}  => {
+      self.preimages.push(payment_preimage);
+      },
+      ChannelMonitorUpdate::CommitmentSecret {secret} => {
+      self.commitment_secrets.push(secret);
+      },
+    }
+  }
+}
+
+//
+//Chain Monitor
+//
+
+pub struct ChainMonitor {
+  monitors: HashMap<OutPoint, ChannelMonitor>,
+  persister: FileStore
+}
+
+impl ChainMonitor {
+  fn watch_channel(&mut self, funding_outpoint: OutPoint, channel_monitor: ChannelMonitor) -> Result<ChannelMonitorUpdateStatus, ()> {
+    self.monitors.insert(funding_outpoint, channel_monitor.clone());
+    let result = self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
+
+    match result {
+      ChannelMonitorUpdateStatus::Completed => {
+        println!("Persist successful")
+      },
+      ChannelMonitorUpdateStatus::UnrecoverableError => {
+        panic!("ChannelMonitor Persistance Failed! Cannot continue normal operations!")
+      }
+      }
+    Ok(result)
+    }
+
+  fn update_channel(&mut self, funding_outpoint: OutPoint, update: ChannelMonitorUpdate) {
+    let channel_monitor = self.monitors.get(&funding_outpoint).unwrap();
+    channel_monitor.update_monitor(update);
+    self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
+  }
+    
+  }
