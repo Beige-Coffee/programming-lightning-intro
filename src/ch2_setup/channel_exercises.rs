@@ -39,7 +39,7 @@ struct WatchOutput {
 
 impl ChannelMonitor{
   pub fn block_connected(
-    self,
+    &mut self,
     header: Header,
     txdata: TransactionData,
     height: u32,
@@ -48,7 +48,7 @@ impl ChannelMonitor{
     
     // for each transaction in data
     for tx in txdata {
-      if self.spends_watched_output(tx) {
+      if self.spends_watched_output(tx.clone()) {
         let on_chain_tx = self.build_onchain_tx(tx);
         broadcaster.broadcast_transactions(&[&on_chain_tx]);
         self.update_outputs_to_watch(on_chain_tx);
