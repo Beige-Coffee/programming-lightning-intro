@@ -57,7 +57,7 @@ impl ChannelMonitor{
       }
     }
 
-  fn spends_watched_output(self, tx: Transaction) -> bool {
+  fn spends_watched_output(&self, tx: Transaction) -> bool {
     for input in tx.input {
       if let Some(outputs) = self.outputs_to_watch.get(&input.previous_output.txid) {
         for (output_idx, script_pubkey) in outputs.iter() {
@@ -70,7 +70,7 @@ impl ChannelMonitor{
     false
   }
 
-  fn update_outputs_to_watch(mut self, tx: Transaction) {
+  fn update_outputs_to_watch(&mut self, tx: Transaction) {
     let mut outputs_to_add = Vec::new();
     
     for (index, output) in tx.output.iter().enumerate() {
