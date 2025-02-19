@@ -80,7 +80,7 @@ impl ChannelMonitor{
     self.outputs_to_watch.insert(tx.compute_txid(), outputs_to_add);
   }
 
-  fn build_onchain_tx(self, tx: Transaction) -> Transaction {
+  fn build_onchain_tx(&self, tx: Transaction) -> Transaction {
     tx.clone()
   }
 
