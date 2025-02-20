@@ -222,7 +222,7 @@ impl OutboundV1Channel{
     }
   }
   
-  pub fn open_channel(&self) -> ChannelOpenStatus {
+  pub fn open_channel(&mut self) -> ChannelOpenStatus {
     ChannelOpenStatus::Success {
       funding_outpoint: OutPoint { txid: Txid::from_slice(&[43; 32]).unwrap(), index: 0 },
       channel_monitor: ChannelMonitor::new()
@@ -235,9 +235,9 @@ struct ChannelManager {
 }
 
 impl ChannelManager {
-  pub fn create_channel(&self, their_network_key: PublicKey, channel_value_satoshis: u64) {
+  pub fn create_channel(&mut self, their_network_key: PublicKey, channel_value_satoshis: u64) {
 
-    let channel = OutboundV1Channel::new(their_network_key, channel_value_satoshis);
+    let mut channel = OutboundV1Channel::new(their_network_key, channel_value_satoshis);
 
     let result = channel.open_channel();
 
