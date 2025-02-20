@@ -72,7 +72,7 @@ impl ChannelMonitor{
     height: u32,
     broadcaster: BitcoindClient
   ) {
-    
+
     // for each transaction in data
     for tx in txdata {
       if self.spends_watched_output(tx.clone()) {
@@ -80,7 +80,7 @@ impl ChannelMonitor{
         broadcaster.broadcast_transactions(&[&on_chain_tx]);
         self.update_outputs_to_watch(on_chain_tx);
       }
-        
+
       }
     }
 
@@ -99,7 +99,7 @@ impl ChannelMonitor{
 
   fn update_outputs_to_watch(&mut self, tx: Transaction) {
     let mut outputs_to_add = Vec::new();
-    
+
     for (index, output) in tx.output.iter().enumerate() {
       outputs_to_add.push( (index as u32, output.script_pubkey.clone()) );
     }
@@ -221,7 +221,7 @@ impl OutboundV1Channel{
       channel_value_satoshis
     }
   }
-  
+
   pub fn open_channel(&mut self) -> ChannelOpenStatus {
     ChannelOpenStatus::Success {
       funding_outpoint: OutPoint { txid: Txid::from_slice(&[43; 32]).unwrap(), index: 0 },
