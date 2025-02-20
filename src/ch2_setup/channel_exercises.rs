@@ -13,6 +13,8 @@ use bitcoin::script::ScriptBuf;
 use internal::bitcoind_client::BitcoindClient;
 use lightning::chain::chaininterface::BroadcasterInterface;
 use bitcoin::block::Header;
+use bitcoin::{Network};
+use bitcoin::hashes::Hash;
 
 //
 //Channel Monitor
@@ -130,6 +132,22 @@ impl ChannelMonitor {
       },
     }
   }
+
+  pub fn new() -> Self {
+      ChannelMonitor {
+          channel_id: ChannelId::new_zero(),
+          funding_outpoint: OutPoint {
+              txid: Txid::from_slice(&[43; 32]).unwrap(),
+              index: 0,
+          },
+          channel_value_sats: 0,
+          current_commitment_tx: None,
+          best_block: BestBlock::from_network(Network::Regtest),
+          commitment_secrets: Vec::new(),
+          preimages: Vec::new(),
+          outputs_to_watch: HashMap::new(),
+      }
+  }
 }
 
 //
@@ -164,18 +182,79 @@ impl ChainMonitor {
     self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
   }
 
-  fn transactions_confirmed(&self,
+  fn transactions_confirmed(&mut self,
     header: Header,
-    txdata: TransactionData,
+    txdata: &TransactionData,
     height: u32,
-    broadcaster: BitcoindClient
+    broadcaster: &BitcoindClient
   ) {
-    for (_, monitor) in self.monitors.into_iter() {
+    for (_, monitor) in self.monitors.iter_mut() {
       monitor.block_connected(
         header,
-        txdata,
+        txdata.clone(),
         height,
-        self.broadcaster);
+        self.broadcaster.clone());
+    }
+  }
+}
+
+//
+//Channel Manager
+//
+struct OutboundV1Channel {
+  their_network_key: PublicKey,
+  channel_value_satoshis: u64,
+}
+
+enum ChannelOpenStatus {
+  Success{
+  funding_outpoint: OutPoint,
+  channel_monitor: ChannelMonitor
+  },
+  Failure
+}
+
+impl OutboundV1Channel{
+  pub fn new(their_network_key: PublicKey, channel_value_satoshis: u64) -> Self {
+    Self {
+      their_network_key,
+      channel_value_satoshis
+    }
+  }
+  
+  pub fn open_channel() -> ChannelOpenStatus {
+    ChannelOpenStatus::Success {
+      funding_outpoint: OutPoint { txid: Txid::from_slice(&[43; 32]).unwrap(), index: 0 },
+      channel_monitor: ChannelMonitor::new()
+    }
+      
+    }
+  }
+
+struct ChannelManager {
+  chain_monitor: ChainMonitor,
+}
+
+impl ChannelManager {
+  pub fn create_channel(&self, their_network_key: PublicKey, channel_value_satoshis: u64) {
+
+    let channel = OutboundV1Channel::new(their_network_key, channel_value_satoshis);
+
+    let result = channel.open_channel();
+
+    match result {
+
+      ChannelOpenStatus::Success {funding_outpoint, channel_monitor} => {
+
+        if let Err(_) = self.chain_monitor.watch_channel(funding_outpoint, channel_monitor) {
+          panic!("Failed to watch channel")
+        }
+
+      },
+      ChannelOpenStatus::Failure => {
+
+        panic!("Open Channel Failed")
+      }
     }
   }
 }
