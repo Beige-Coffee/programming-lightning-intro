@@ -222,13 +222,12 @@ impl OutboundV1Channel{
     }
   }
   
-  pub fn open_channel() -> ChannelOpenStatus {
+  pub fn open_channel(&self) -> ChannelOpenStatus {
     ChannelOpenStatus::Success {
       funding_outpoint: OutPoint { txid: Txid::from_slice(&[43; 32]).unwrap(), index: 0 },
       channel_monitor: ChannelMonitor::new()
     }
-      
-    }
+  }
   }
 
 struct ChannelManager {
