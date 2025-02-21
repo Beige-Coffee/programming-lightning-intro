@@ -230,7 +230,7 @@ impl OutboundV1Channel{
   }
   }
 
-struct ChannelManager {
+pub struct ChannelManager {
   chain_monitor: ChainMonitor,
 }
 
