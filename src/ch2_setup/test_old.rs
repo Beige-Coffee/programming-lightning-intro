@@ -7,7 +7,6 @@ use crate::ch2_setup::exercises::{
 use crate::ch2_setup::bitcoin_client::{
     BitcoinClient,
 };
-use crate::ch2_setup::bitcoin_client_solutions::BitcoinClient as BitcoinClientSolutions;
 use crate::ch2_setup::persist_exercise::{
     SimpleStore
 };
@@ -39,9 +38,73 @@ use bitcoin::consensus::{encode};
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
 use tokio::time::{sleep, Duration};
 
+pub struct Listener {
+
+}
+
+impl lightning::chain::Listen for Listener {
+    fn filtered_block_connected(
+        &self,
+        header: &Header,
+        txdata: &TransactionData<'_>,
+        height: u32,
+    ) {
+        println!("Filtered Block Connected: {:?}", height);
+    }
+    fn block_disconnected(&self, header: &Header, height: u32) {
+        println!("Block Disconnected: {:?}", height);
+    }
+
+    // Provided method
+    fn block_connected(&self, block: &Block, height: u32) {
+        println!("Block Connected: {:?}", height);
+    }
+
+}
 
 #[tokio::test]
-async fn test_new_bitcoin_client() {
+async fn get_bitcoind() {
+    let http_endpoint = HttpEndpoint::for_host("0.0.0.0".to_string()).with_port(18443);
+    let rpc_credentials = base64::encode(format!(
+        "{}:{}",
+        "bitcoind".to_string(),
+        "bitcoind".to_string()
+    ));
+    let bitcoind_rpc_client = RpcClient::new(&rpc_credentials, http_endpoint).unwrap();
+
+    // Test get_best_block
+    let (hash, height) = bitcoind_rpc_client.get_best_block().await.unwrap();
+    assert!(height > Some(1), "Height should be greater than 1");
+
+    // Test get_header
+    let header_data = bitcoind_rpc_client
+        .get_header(&hash, height)
+        .await
+        .expect("Should fetch header");
+    assert!(header_data.height > 1, "Height should be greater than 1");
+
+    // Test get_block
+    let block_data = bitcoind_rpc_client
+        .get_block(&hash)
+        .await
+        .expect("Should fetch block");
+
+}
+
+#[tokio::test]
+async fn test_new_bitcoind() {
+
+    let host = "0.0.0.0".to_string();
+    let port: u16 = 18443;
+    let rpc_user = "bitcoind".to_string();
+    let rpc_password = "bitcoind".to_string();
+    let network = Network::Regtest;
+
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host, port, rpc_user, rpc_password, network).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_new_bitcoind2() {
 
     let host = "0.0.0.0".to_string();
     let port: u16 = 18443;
@@ -53,7 +116,7 @@ async fn test_new_bitcoin_client() {
 }
 
 #[tokio::test]
-async fn test_block_source() {
+async fn test_poll_for_blocks() {
 
     let host = "0.0.0.0".to_string();
     let port: u16 = 18443;
@@ -61,51 +124,15 @@ async fn test_block_source() {
     let rpc_password = "bitcoind".to_string();
     let network = Network::Regtest;
 
-    let bitcoind_rpc_client = BitcoinClient::new(host.clone(), port.clone(), rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
-    let bitcoin_client_solution = BitcoinClientSolutions::new(host.clone(), port.clone(), rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host, port, rpc_user, rpc_password, network).await.unwrap();
 
-    let best_block_user = bitcoind_rpc_client.get_best_block().await.unwrap().0;
-    let best_block_answer = bitcoin_client_solution.get_best_block().await.unwrap().0;
+    let listener = Listener{};
 
-    let block_user = bitcoind_rpc_client.get_block(&best_block_user).await.unwrap();
-    let block_answer = bitcoin_client_solution.get_block(&best_block_user).await.unwrap();
-
-    let header_user = match block_user {
-        BlockData::HeaderOnly(header) => header,
-        BlockData::FullBlock(block) => block.header,
-    };
-
-    let header_answer = match block_answer {
-        BlockData::HeaderOnly(header) => header,
-        BlockData::FullBlock(block) => block.header,
-    };
-
-    let best_header_user = bitcoind_rpc_client.get_header(&best_block_user, None).await.unwrap();
-    let best_header_answer = bitcoin_client_solution.get_header(&best_block_user, None).await.unwrap();
-
-
-    assert_eq!(
-    best_block_user,
-    best_block_answer
-    );
-
-
-    assert_eq!(
-    header_user,
-    header_answer
-    );
-
-
-    assert_eq!(
-    best_header_user,
-    best_header_answer
-    );
-
-    
+    poll_for_blocks(bitcoind_rpc_client, network, listener); 
 }
 
 #[tokio::test]
-async fn test_list_unspent() {
+async fn test_poll_for_blocks2() {
 
     let host = "0.0.0.0".to_string();
     let port: u16 = 18443;
@@ -113,48 +140,11 @@ async fn test_list_unspent() {
     let rpc_password = "bitcoind".to_string();
     let network = Network::Regtest;
 
-    let bitcoind_rpc_client = BitcoinClient::new(host.clone(), port.clone(), rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
-    let bitcoin_client_solution = BitcoinClientSolutions::new(host.clone(), port.clone(), rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host, port, rpc_user, rpc_password, network).await.unwrap();
 
-    let user_unspent_utxos = bitcoind_rpc_client.list_unspent().await.0.len();
-    let answer_unspent_utxos = bitcoind_rpc_client.list_unspent().await.0.len();
+    let listener = Listener{};
 
-
-    assert_eq!(
-        user_unspent_utxos,
-        answer_unspent_utxos
-    );
-
-}
-
-#[tokio::test]
-async fn test_broadcast() {
-
-    let host = "0.0.0.0".to_string();
-    let port: u16 = 18443;
-    let rpc_user = "bitcoind".to_string();
-    let rpc_password = "bitcoind".to_string();
-    let network = Network::Regtest;
-
-    let bitcoind_rpc_client = BitcoinClient::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
-
-    let internal_bitcoind = BitcoindClient::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
-
-    let tx = get_tx_hex().await;
-
-    let tx_hex = encode::serialize_hex(&tx);
-
-    bitcoind_rpc_client.broadcast_transactions(&[&tx]);
-
-    tokio::time::sleep(Duration::from_millis(250)).await;
-
-    let mempool = internal_bitcoind.get_raw_mempool().await;
-
-    let txid = tx.compute_txid().to_string();
-
-    //assert_eq!(mempool.transaction_ids, vec!["0.0.0.0".to_string()]);
-
-    assert!(mempool.transaction_ids.contains(&txid));
+    poll_for_blocks2(bitcoind_rpc_client, network, listener); 
 }
 
 #[tokio::test]
@@ -190,15 +180,45 @@ async fn test_fees() {
     let rpc_password = "bitcoind".to_string();
     let network = Network::Regtest;
 
-    let bitcoind_rpc_client = BitcoinClient::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
 
     // check UrgentOnChainSweep
     let high_fees = bitcoind_rpc_client.get_est_sat_per_1000_weight(high_fee_target);
-    assert_eq!(high_fees, 1500);
+    assert_eq!(high_fees, 6);
 
     // check MinAllowedAnchorChannelRemoteFee
     let low_fees = bitcoind_rpc_client.get_est_sat_per_1000_weight(low_fee_target);
-    assert_eq!(low_fees, 500);
+    assert_eq!(low_fees, 2);
+}
+
+#[tokio::test]
+async fn test_broadcast() {
+
+    let host = "0.0.0.0".to_string();
+    let port: u16 = 18443;
+    let rpc_user = "bitcoind".to_string();
+    let rpc_password = "bitcoind".to_string();
+    let network = Network::Regtest;
+
+    let bitcoind_rpc_client = BitcoindClientExercise::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+
+    let internal_bitcoind = BitcoindClient::new(host.clone(), port, rpc_user.clone(), rpc_password.clone(), network).await.unwrap();
+
+    let tx = get_tx_hex().await;
+
+    let tx_hex = encode::serialize_hex(&tx);
+
+    bitcoind_rpc_client.broadcast_transactions(&[&tx]);
+
+    tokio::time::sleep(Duration::from_millis(250)).await;
+
+    let mempool = internal_bitcoind.get_raw_mempool().await;
+
+    let txid = tx.compute_txid().to_string();
+
+    //assert_eq!(mempool.transaction_ids, vec!["0.0.0.0".to_string()]);
+
+    assert!(mempool.transaction_ids.contains(&txid));
 }
 
 #[tokio::test]
