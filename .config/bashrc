@@ -19,6 +19,9 @@ alias gettx='bcli gettransaction'
 # an alias for decoding a transaction
 alias getutxo='bcli gettxout'
 
+# an alias for getting mempool transactions
+alias getmempool='bcli getrawmempool'
+
 # usage: mine x
 # where x is the number of blocks to mine
 # useful when opening channels and you need to get the funding tx confirmed

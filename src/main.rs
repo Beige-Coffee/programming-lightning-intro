@@ -1,7 +1,8 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use clap::{Parser, Subcommand};
-use pl_00_intro::interactive::{funding, refund, commit, htlc, htlc_timeout, htlc_demo, htlc_demo2};
+use clap::{Parser, Subcommand, ValueEnum};
+use pl_00_intro::interactive::{funding, refund, commit, htlc, htlc_timeout, htlc_demo, htlc_demo2, mempool};
 use pl_00_intro::ch2_setup::peer_listener_exercise;
+use pl_00_intro::interactive::mempool::MempoolCommand;
 
 /// Main CLI structure
 #[derive(Parser)]
@@ -14,10 +15,20 @@ struct Cli {
     command: Commands,
 }
 
+
 /// CLI Subcommands
 #[derive(Subcommand)]
 enum Commands {
     Funding,
+    Mempool {
+        #[arg(
+            short = 'c',
+            long,
+            help = "Command",
+            value_enum // Restricts to MempoolCommand variants
+        )]
+        command_type: MempoolCommand, // Enum instead of String
+    },
     Refund {
         #[arg(short = 't', long, help = "Funding Tx ID")]
         funding_txid: String,
@@ -59,5 +70,6 @@ async fn main() {
         Commands::PeerListen { port } => peer_listener_exercise::run(*port).await,
         Commands::HtlcDemo => htlc_demo::run().await,
         Commands::HtlcDemo2 { txid } => htlc_demo2::run(txid.clone()).await,
+        Commands::Mempool { command_type } => mempool::run(command_type.clone()).await,
     }
 }

@@ -47,7 +47,7 @@ use internal::bitcoind_client::BitcoindClient;
 use internal::convert;
 use internal::convert::BlockchainInfo;
 use internal::hex_utils;
-use internal::helper::{pubkey_from_private_key, secp256k1_private_key};
+use internal::helper::{pubkey_from_private_key, secp256k1_private_key, };
 use serde_json;
 use std::collections::HashMap;
 use std::str::FromStr;
