@@ -126,8 +126,8 @@ pub async fn run(funding_txid: String) {
         };
     
     let funding_amount = 5_000_000;
-    let our_balance = 4_999_645;
-    let counterparty_balance = 355;
+    let our_balance = 4_999_500;
+    let counterparty_balance = 500;
     
     create_broadcast_funding_tx(bitcoind, txid.clone(), our_key_manager, counterparty_key_manager, funding_amount,
                                our_balance, counterparty_balance).await;

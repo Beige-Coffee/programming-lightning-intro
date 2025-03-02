@@ -9,5 +9,6 @@ pub mod payment_exercise;
 pub mod peer_listener_exercise;
 pub mod persist_exercise;
 pub mod persist_exercise_v2;
+pub mod network_exerciseV2;
 pub mod solutions;
 pub mod test;

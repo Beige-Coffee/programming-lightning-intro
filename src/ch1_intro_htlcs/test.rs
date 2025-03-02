@@ -113,8 +113,8 @@ fn test_build_refund_transaction() {
     println!("their solution: {}", their_solution);
 
     let acceptable_solutions = [
-        "52c346e97b9847178eaccd11341cc8a1266ba83f78c60fef282cd7b951c3ab4f".to_string(),
         "5964f26f1734b139b30b71a9d37bb10c56422d2cd81f9684d7a9d27bd504ff01".to_string(),
+        "52c346e97b9847178eaccd11341cc8a1266ba83f78c60fef282cd7b951c3ab4f".to_string(),
     ];
 
     assert!(acceptable_solutions.contains(&their_solution));

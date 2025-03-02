@@ -45,9 +45,23 @@ pub fn build_refund_transaction(
     alice_balance: u64,
     bob_balance: u64
 ) -> Transaction {
-    
-    unimplemented!()
 
+    let alice_script = p2wpkh_output_script(alice_pubkey);
+
+    let bob_script = p2wpkh_output_script(bob_pubkey);
+
+    let alice_output = build_output(alice_balance, alice_script);
+
+    let bob_output = build_output(bob_balance, bob_script);
+
+    let version = Version::TWO;
+    let locktime = LockTime::ZERO;
+
+    let tx = build_transaction(version,
+                      locktime,
+                      vec![funding_txin],
+                      vec![alice_output, bob_output]);
+    tx
 }
 
 pub fn generate_revocation_pubkey(

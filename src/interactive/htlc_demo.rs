@@ -39,8 +39,8 @@ use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use internal::bitcoind_client;
 use internal::bitcoind_client::BitcoindClient;
-use ch1_intro_htlcs::solutions::build_funding_transaction;
-use internal::helper::{pubkey_from_private_key, build_output, build_transaction, bitcoin_pubkey_from_private_key, secp256k1_private_key};
+use ch1_intro_htlcs::solutions::{build_funding_transaction, to_local};
+use internal::helper::{pubkey_from_private_key, build_output, build_transaction, bitcoin_pubkey_from_private_key, secp256k1_private_key, p2wpkh_output_script};
 use internal::convert;
 use internal::convert::{BlockchainInfo, ListUnspentUtxo, SignedTx};
 use internal::hex_utils;
@@ -63,11 +63,25 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     // normally, we would generate our own public key
     //   and the counterparty would send us theirs
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
+    let revocation_key = pubkey_from_private_key(&[0x02; 32]);
+    let to_local_delayed_pubkey = pubkey_from_private_key(&[0x03; 32]);
+    let counterparty_public_key = pubkey_from_private_key(&[0x04; 32]);
 
-    let secret = "ProgrammingLightningRocks!".to_string();
+    let to_self_delay = 144;
+
+    // preimage
+    let secret = "ProgrammingLightning".to_string();
     let secret_bytes = secret.as_bytes();
     let payment_hash = Sha256::hash(secret_bytes).to_byte_array();
     let payment_hash160 = Ripemd160::hash(&payment_hash).to_byte_array();
+
+    let local_output_script = to_local(&revocation_key, &to_local_delayed_pubkey,
+            to_self_delay);
+
+    let remote_output_script = p2wpkh_output_script(counterparty_public_key);
+
+    let local_output = build_output(3_599_500, local_output_script.to_p2wsh());
+    let remote_output = build_output(1_400_500, remote_output_script);
 
     // build funding transaction using the function we created
     let output_script = build_hash_locked_script(&our_public_key,
@@ -75,12 +89,12 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     println!("Witness Script (hex): {}", output_script.to_hex_string());
     
 
-    let output = build_output(tx_in_amount, output_script.to_p2wsh());
+    let htlc_output = build_output(400_000, output_script.to_p2wsh());
 
     let version = Version::TWO;
     let locktime = LockTime::ZERO;
 
-    let tx = build_transaction(version, locktime, vec![tx_input], vec![output]);
+    let tx = build_transaction(version, locktime, vec![tx_input], vec![local_output, remote_output, htlc_output]);
 
     let signed_tx = sign_raw_transaction(bitcoind.clone(), tx).await;
 

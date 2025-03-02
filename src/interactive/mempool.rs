@@ -73,25 +73,32 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
 
 
-    let output1 = match mempool_command {
+    let outputs = match mempool_command {
         MempoolCommand::NonStandard => {
 
             let output_script = build_non_standard_output2();
 
-            build_output(5_000_000, output_script)
+            let output1 = build_output(5_000_000, output_script);
+
+            vec![output1]
             
         },
 
         MempoolCommand::Consensus => {
             let output_script = p2wpkh_output_script(our_public_key);
 
-            build_output(5_500_000, output_script)
+            let output1 = build_output(5_500_000, output_script);
+            
+            vec![output1]
         },
 
         MempoolCommand::Policy => {
             let output_script = p2wpkh_output_script(our_public_key);
 
-            build_output(100, output_script)
+            let output1 = build_output(4_900_000, output_script.clone());
+            let output2 = build_output(100, output_script.clone());
+
+            vec![output1, output2]
         }
 
     };
@@ -102,7 +109,7 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     let tx = build_transaction(version,
                       locktime,
                       vec![tx_input],
-                      vec![output1]);
+                      outputs);
 
     let signed_tx = sign_raw_transaction(bitcoind.clone(), tx).await;
 

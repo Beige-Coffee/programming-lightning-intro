@@ -4,6 +4,9 @@ use internal::bitcoind_client::BitcoindClient;
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
+use crate::ch2_setup::network_exerciseV2::{
+    start_listener,PeerManager
+};
 use crate::ch2_setup::bitcoin_client::{
     BitcoinClient,
 };
@@ -17,6 +20,7 @@ use crate::ch2_setup::payment_exercise::{
 use crate::ch2_setup::fee_estimator_exercise::{
     get_est_sat_per_1000_weight
 };
+use tokio::net::TcpStream;
 use crate::ch2_setup::helpers::{get_tx_hex};
 use lightning::util::persist::KVStore;
 use base64;
@@ -202,7 +206,39 @@ async fn test_fees() {
 }
 
 #[tokio::test]
-async fn test_payment() {
+async fn test_start_listener() {
+    // Reset call count
+    unsafe { crate::ch2_setup::network_exerciseV2::CALL_COUNT = 0; }
 
+    // Pick a random high port to avoid conflicts
+    let port = 56789;
 
+    // Create a fake PeerManager
+    let peer_manager = PeerManager {
+        id: "test_node".to_string(),
+    };
+
+    // Spawn the listener in the background
+    tokio::spawn(async move {
+        start_listener(port, peer_manager).await;
+    });
+
+    // Give the listener a moment to start
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Connect to it
+    let stream = TcpStream::connect(format!("127.0.0.1:{}", port)).await;
+    assert!(stream.is_ok(), "Should connect to the listener");
+
+    // Wait briefly for setup_inbound to be called
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Check if setup_inbound was called
+    unsafe {
+        assert_eq!(
+            crate::ch2_setup::network_exerciseV2::CALL_COUNT,
+            1,
+            "setup_inbound should be called once"
+        );
+    }
 }

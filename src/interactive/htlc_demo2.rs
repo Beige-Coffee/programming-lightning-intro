@@ -105,13 +105,13 @@ pub async fn run(funding_txid: String) {
 
 pub fn sign_transaction(tx: Transaction)-> Transaction {
 
-    let funding_amount = 5_000_000;
+    let funding_amount = 400_000;
     let txid_index = 0;
     
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
     let our_private_key = secp256k1_private_key(&[0x01; 32]);
 
-    let secret = "ProgrammingLightningRocks!".to_string();
+    let secret = "ProgrammingLightning".to_string();
     let secret_bytes = secret.as_bytes();
     let payment_hash = Sha256::hash(secret_bytes).to_byte_array();
     let payment_hash160 = Ripemd160::hash(&payment_hash).to_byte_array();
@@ -162,7 +162,7 @@ pub fn sign_transaction(tx: Transaction)-> Transaction {
 
 fn build_p2wpkh_tx(txin: TxIn, pubkey: PublicKey) -> Transaction {
     let output_script = p2wpkh_output_script(pubkey);
-    let output = build_output(5_000_000, output_script);
+    let output = build_output(400_000, output_script);
     
     let version = Version::TWO;
     let locktime = LockTime::from_consensus(200);
