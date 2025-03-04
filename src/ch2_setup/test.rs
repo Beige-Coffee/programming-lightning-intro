@@ -211,7 +211,7 @@ async fn test_start_listener() {
     unsafe { crate::ch2_setup::network_exerciseV2::CALL_COUNT = 0; }
 
     // Pick a random high port to avoid conflicts
-    let port = 56789;
+    let port = 9735;
 
     // Create a fake PeerManager
     let peer_manager = PeerManager {
@@ -220,7 +220,7 @@ async fn test_start_listener() {
 
     // Spawn the listener in the background
     tokio::spawn(async move {
-        start_listener(port, peer_manager).await;
+        start_listener(peer_manager).await;
     });
 
     // Give the listener a moment to start

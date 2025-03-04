@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use rand::Rng;
 
 /// Represents a Lightning channel's state
 #[derive(Debug, Clone)]
 struct Channel {
     id: String,
+    channel_id: Option<String>,
     funding_amt: u64,
     state: String, // Example states: "open_channel", "accept_channel", etc.
 }
@@ -88,7 +90,7 @@ fn handle_message(msg: &str, channels: &ChannelMap, channel_counter: &ChannelCou
         "HELP" => {
             return "\
 Available Commands:
-- OPEN_CHANNEL <funding_amt>: Opens a new channel with the specified funding amount.
+- OPEN_CHANNEL <funding_amt> <to_self_delay> <sats_p_vbyte>: Opens a new channel with the specified funding amount, other node's to_self_delay, and proposed fee-rates.
 - FUNDING_CREATED <channel_id>: Moves the channel to the 'funding_created' state.
 - FUNDING_SIGNED <channel_id>: Moves the channel to the 'funding_signed' state.
 - FUNDING_LOCKED <channel_id>: Moves the channel to the 'funding_locked' state, activating it.
@@ -98,11 +100,25 @@ Available Commands:
         }
 
         "OPEN_CHANNEL" => {
-            if parts.len() != 2 {
-                return "ERROR: Usage: OPEN_CHANNEL <funding_amt>\n".to_string();
+            if parts.len() != 4 {
+                return "ERROR: Usage: OPEN_CHANNEL <funding_amt> <to_self_delay> <sats_p_vbyte>\n\n".to_string();
             }
 
             let funding_amt: u64 = parts[1].parse().unwrap_or(0);
+            let to_self_delay: u64 = parts[2].parse().unwrap_or(0);
+            let sats_p_vbyte: u64 = parts[3].parse().unwrap_or(0);
+
+            if funding_amt < 100000 {
+                return "REJECT CHANNEL: funding_amt too small. Will not accept channels with funding_amt less than 100,000 sats!\n\n".to_string();
+            }
+
+            if to_self_delay > 144 {
+                return "REJECT CHANNEL: to_self_delay too large. Will not accept channels with to_self_delay larger than 144!\n\n".to_string();
+            }
+
+            if sats_p_vbyte < 10 {
+                return "REJECT CHANNEL: sats_p_vbyte too small. Will not accept channels with sats_p_vbyte less than 10 sats/vByte!\n\n".to_string();
+            }
 
             let mut channels_lock = channels.lock().unwrap();
             let mut counter = channel_counter.lock().unwrap();
@@ -114,19 +130,30 @@ Available Commands:
                 channel_id.clone(),
                 Channel {
                     id: channel_id.clone(),
+                    channel_id: None,
                     funding_amt,
                     state: "open_channel".to_string(),
                 },
             );
 
             format!(
-                "ACCEPT_CHANNEL: id={} funding={}\n",
-                channel_id, funding_amt
+                "ACCEPT_CHANNEL: temp_channel_id={} to_self_delay=144, channel_keys[...]\n",
+                channel_id,
             )
         }
 
-        "FUNDING_CREATED" if parts.len() == 2 => {
+        "FUNDING_CREATED" if parts.len() == 4 => {
+            
             let channel_id = parts[1].to_string();
+            let funding_tx = parts[2].to_string();
+            let signature = parts[3].to_string();
+
+            if is_valid_txid(&funding_tx) != true {
+                return format!(
+                    "ERROR: MUST provide funding output in following format:  TxID:OutputIndex\n\n"
+                );
+            }
+            
             let mut channels_lock = channels.lock().unwrap();
             if let Some(channel) = channels_lock.get_mut(&channel_id) {
                 if channel.state != "open_channel" {
@@ -135,42 +162,30 @@ Available Commands:
                         channel.state
                     );
                 }
-                channel.state = "funding_created".to_string();
-                return format!("FUNDING_SIGNED: id={}\n", channel_id);
-            }
-            "ERROR: Channel not found\n".to_string()
-        }
-
-        "FUNDING_SIGNED" if parts.len() == 2 => {
-            let channel_id = parts[1].to_string();
-            let mut channels_lock = channels.lock().unwrap();
-            if let Some(channel) = channels_lock.get_mut(&channel_id) {
-                if channel.state != "funding_created" {
-                    return format!(
-                        "ERROR: Cannot move to funding_signed, current state is {}\n",
-                        channel.state
-                    );
-                }
                 channel.state = "funding_signed".to_string();
-                return format!("FUNDING_LOCKED: id={}\n", channel_id);
+                channel.channel_id = Some(generate_random_channel_id());
+                return format!("FUNDING_SIGNED: channel_id={}, signature=[avb1adx4]\n\n", channel.channel_id.as_ref().unwrap());
             }
             "ERROR: Channel not found\n".to_string()
         }
+        "CHANNEL_READY" if parts.len() == 2 => {
+                let channel_id = parts[1].to_string(); 
+                let mut channels_lock = channels.lock().unwrap();
 
-        "FUNDING_LOCKED" if parts.len() == 2 => {
-            let channel_id = parts[1].to_string();
-            let mut channels_lock = channels.lock().unwrap();
-            if let Some(channel) = channels_lock.get_mut(&channel_id) {
-                if channel.state != "funding_signed" {
-                    return format!(
-                        "ERROR: Cannot move to funding_locked, current state is {}\n",
-                        channel.state
-                    );
+                // Find the channel with the matching channel_id
+                if let Some((_, channel)) = channels_lock.iter_mut().find(|(_, ch)| {
+                    ch.channel_id.as_ref() == Some(&channel_id)
+                }) {
+                    if channel.state != "funding_signed" {
+                        return format!(
+                            "ERROR: Cannot is not ready, current state is {}\n",
+                            channel.state
+                        );
+                    }
+                    channel.state = "channel_ready".to_string();
+                    return format!("CHANNEL_READY: id={}\n", channel.channel_id.as_ref().unwrap());
                 }
-                channel.state = "funding_locked".to_string();
-                return format!("CHANNEL {} IS NOW ACTIVE!\n", channel_id);
-            }
-            "ERROR: Channel not found\n".to_string()
+                "ERROR: Channel not found\n".to_string()
         }
 
         "GET_CHANNELS" => {
@@ -182,8 +197,8 @@ Available Commands:
             let mut response = String::from("Active Channels:\n");
             for (id, channel) in channels_lock.iter() {
                 response.push_str(&format!(
-                    "id={} funding={} state={}\n",
-                    id, channel.funding_amt, channel.state
+                    "channel_id={:?}, temp_channel_id={} funding={} state={}\n",
+                    channel.channel_id, id, channel.funding_amt, channel.state
                 ));
             }
             response
@@ -191,4 +206,33 @@ Available Commands:
 
         _ => "UNKNOWN COMMAND. Type HELP for available commands.\n".to_string(),
     }
+}
+
+fn is_valid_txid(s: &str) -> bool {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 2 { // Must have exactly two parts (before and after ":")
+        return false;
+    }
+    let before_colon = parts[0];
+    let after_colon = parts[1];
+
+    // Before colon: any text (non-empty in this case, adjust as needed)
+    if before_colon.is_empty() {
+        return false;
+    }
+
+    // After colon: must be a valid number (integer)
+    after_colon.parse::<i64>().is_ok()
+}
+
+// Generate a random 3-letter channel ID
+fn generate_random_channel_id() -> String {
+    let letters = "abcdefghijklmnopqrstuvwxyz";
+    let mut rng = rand::thread_rng();
+    let mut id = String::with_capacity(3);
+    for _ in 0..3 {
+        let idx = rng.gen_range(0, letters.len()); // Two arguments: low, high
+        id.push(letters.chars().nth(idx).unwrap());
+    }
+    id
 }

@@ -17,7 +17,9 @@ pub async fn setup_inbound(peer_manager: PeerManager, tcp_stream: tokio::net::Tc
     unsafe { CALL_COUNT += 1; } // Increment the global counter
 }
 
-pub async fn start_listener(port: u16, peer_manager: PeerManager) {
+pub async fn start_listener(peer_manager: PeerManager) {
+    let port = 9735;
+    
     let listener = TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
         .expect("Failed to bind");
