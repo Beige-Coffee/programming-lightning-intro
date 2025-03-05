@@ -4,7 +4,14 @@ use internal::bitcoind_client::BitcoindClient;
 use crate::ch2_setup::exercises::{
     BitcoindClientExercise,poll_for_blocks,poll_for_blocks2
 };
-use crate::ch2_setup::network_exerciseV2::{
+use lightning::ln::types::ChannelId;
+use bitcoin::secp256k1::{self, Secp256k1};
+use crate::ch2_setup::peer_manager_exercise::{
+    PeerManager as PeerManagerExercise, OpenChannelMsg, OpenChannelStatus};
+use crate::ch3_keys::exercises::{
+    SimpleKeysManager,
+};
+use crate::ch2_setup::network_exercise_v2::{
     start_listener,PeerManager
 };
 use crate::ch2_setup::bitcoin_client::{
@@ -37,12 +44,24 @@ use lightning_block_sync::init::validate_best_block_header;
 use lightning_block_sync::poll::ChainPoller;
 use lightning_block_sync::SpvClient;
 use bitcoin::blockdata::block::Header;
-use lightning::chain::transaction::TransactionData;
 use bitcoin::blockdata::block::Block;
 use bitcoin::consensus::{encode};
 use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
 use tokio::time::{sleep, Duration};
-
+use crate::internal::helper::{
+    bitcoin_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key,
+};
+use crate::ch2_setup::channel_exercises_v2::{ChannelMonitor, MockBroadcaster, MockFileStore,
+                                            ChainMonitor, Header as HeaderExercise, TransactionData,
+                                            ChannelManager};
+use lightning::chain::transaction::OutPoint;
+use bitcoin::Transaction;
+use bitcoin::consensus::{deserialize, serialize};
+use hex::{FromHex};
+use bitcoin::script::ScriptBuf;
+use bitcoin::hashes::Hash;
+use bitcoin::hashes::sha256::Hash as Sha256;
+use bitcoin::hash_types::{Txid, BlockHash};
 
 #[tokio::test]
 async fn test_new_bitcoin_client() {
@@ -208,7 +227,7 @@ async fn test_fees() {
 #[tokio::test]
 async fn test_start_listener() {
     // Reset call count
-    unsafe { crate::ch2_setup::network_exerciseV2::CALL_COUNT = 0; }
+    unsafe { crate::ch2_setup::network_exercise_v2::CALL_COUNT = 0; }
 
     // Pick a random high port to avoid conflicts
     let port = 9735;
@@ -236,9 +255,245 @@ async fn test_start_listener() {
     // Check if setup_inbound was called
     unsafe {
         assert_eq!(
-            crate::ch2_setup::network_exerciseV2::CALL_COUNT,
+            crate::ch2_setup::network_exercise_v2::CALL_COUNT,
             1,
             "setup_inbound should be called once"
         );
     }
+}
+
+#[tokio::test]
+async fn test_handle_open_channel() {
+
+    let secp = Secp256k1::new();
+    
+    let seed = [1_u8; 32];
+    let child_index: usize = 0;
+    let keys_manager = SimpleKeysManager::new(seed);
+    
+    let peer_manager = PeerManagerExercise {
+        peers: HashMap::new(),
+        node_signer: keys_manager,
+        secp_ctx: Secp256k1::signing_only(),
+    };
+
+    let their_node_id = pubkey_from_private_key(&[0x01; 32]);
+
+    // Test case 1: Valid channel (should accept)
+    let msg1 = OpenChannelMsg {
+        temporary_channel_id: ChannelId::new_zero(),
+        funding_satoshis: 150_000,      // ≥ 100,000
+        commitment_feerate_sat_per_vbyte: 15, // ≥ 10
+        to_self_delay: 100,             // ≤ 144
+        funding_pubkey: their_node_id, 
+        revocation_basepoint: their_node_id,
+        payment_basepoint: their_node_id
+    };
+    let result = peer_manager.handle_open_channel(their_node_id, &msg1);
+    assert_eq!(result, OpenChannelStatus::Accept, "Valid channel should be accepted");
+
+    // Test case 2: Invalid channel (should fail)
+    let msg2 = OpenChannelMsg {
+        temporary_channel_id: ChannelId::new_zero(),
+        funding_satoshis: 90_000,      // ≥ 100,000
+        commitment_feerate_sat_per_vbyte: 15, // ≥ 10
+        to_self_delay: 100,             // ≤ 144
+        funding_pubkey: their_node_id, 
+        revocation_basepoint: their_node_id,
+        payment_basepoint: their_node_id
+    };
+    let result = peer_manager.handle_open_channel(their_node_id, &msg2);
+    assert_eq!(result, OpenChannelStatus::Reject, "Invalid channel should be rejected");
+
+    // Test case 2: Invalid channel (should fail)
+    let msg2 = OpenChannelMsg {
+        temporary_channel_id: ChannelId::new_zero(),
+        funding_satoshis: 99_999,      // ≥ 100,000
+        commitment_feerate_sat_per_vbyte: 15, // ≥ 10
+        to_self_delay: 100,             // ≤ 144
+        funding_pubkey: their_node_id, 
+        revocation_basepoint: their_node_id,
+        payment_basepoint: their_node_id
+    };
+    let result2 = peer_manager.handle_open_channel(their_node_id, &msg2);
+    assert_eq!(result2, OpenChannelStatus::Reject, "Invalid channel should be rejected");
+
+    // Test case 3: Invalid channel (should fail)
+    let msg3 = OpenChannelMsg {
+        temporary_channel_id: ChannelId::new_zero(),
+        funding_satoshis: 150_000,      // ≥ 100,000
+        commitment_feerate_sat_per_vbyte: 9, // ≥ 10
+        to_self_delay: 100,             // ≤ 144
+        funding_pubkey: their_node_id, 
+        revocation_basepoint: their_node_id,
+        payment_basepoint: their_node_id
+    };
+    let result3 = peer_manager.handle_open_channel(their_node_id, &msg3);
+    assert_eq!(result3, OpenChannelStatus::Reject, "Invalid channel should be rejected");
+
+    // Test case 4: Invalid channel (should fail)
+    let msg4 = OpenChannelMsg {
+        temporary_channel_id: ChannelId::new_zero(),
+        funding_satoshis: 150_000,      // ≥ 100,000
+        commitment_feerate_sat_per_vbyte: 10, // ≥ 10
+        to_self_delay: 145,             // ≤ 144
+        funding_pubkey: their_node_id, 
+        revocation_basepoint: their_node_id,
+        payment_basepoint: their_node_id
+    };
+    let result4 = peer_manager.handle_open_channel(their_node_id, &msg4);
+    assert_eq!(result4, OpenChannelStatus::Reject, "Invalid channel should be rejected");
+
+    
+}
+
+#[tokio::test]
+async fn test_block_connected() {
+    
+    let mut monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let tx_raw = 
+        "01000000000103fc9aa70afba04da865f9821734b556cca9fb5710\
+         fc1338b97fba811033f755e308000000000000000019b37457784d\
+         d04936f011f733b8016c247a9ef08d40007a54a5159d1fc62ee216\
+         00000000000000004c4f2937c6ccf8256d9711a19df1ae62172297\
+         0bf46be925ff15f490efa1633d01000000000000000002c0e1e400\
+         0000000017a9146983f776902c1d1d0355ae0962cb7bc69e9afbde\
+         8706a1e600000000001600144257782711458506b89f255202d645\
+         e25c41144702483045022100dcada0499865a49d0aab8cb113c5f8\
+         3fd5a97abc793f97f3f53aa4b9d1192ed702202094c7934666a30d\
+         6adb1cc9e3b6bc14d2ffebd3200f3908c40053ef2df640b5012103\
+         15434bb59b615a383ae87316e784fc11835bb97fab33fdd2578025\
+         e9968d516e0247304402201d90b3197650569eba4bc0e0b1e2dca7\
+         7dfac7b80d4366f335b67e92e0546e4402203b4be1d443ad7e3a5e\
+         a92aafbcdc027bf9ccf5fe68c0bc8f3ebb6ab806c5464c012103e0\
+         0d92b0fe60731a54fdbcc6920934159db8ffd69d55564579b69a22\
+         ec5bb7530247304402205ab83b734df818e64d8b9e86a8a75f9d00\
+         5c0c6e1b988d045604853ab9ccbde002205a580235841df609d6bd\
+         67534bdcd301999b18e74e197e9e476cdef5fdcbf822012102ebb3\
+         e8a4638ede4721fb98e44e3a3cd61fecfe744461b85e0b6a6a1017\
+         5d5aca00000000";
+
+    let tx: Transaction = deserialize(Vec::from_hex(tx_raw).unwrap().as_slice()).unwrap();
+
+    let header = HeaderExercise {
+        version: 2
+    };
+
+    println!("outputs_to_watch len: {:?}\n\n", monitor.outputs_to_watch.len());
+
+    let txdata: TransactionData = vec![tx.clone()];
+
+    let height = 100;
+
+    let script = ScriptBuf::from_hex("a9146983f776902c1d1d0355ae0962cb7bc69e9afbde87").unwrap();
+
+    let tx_bytes: [u8; 32] = [
+            0xfc, 0x9a, 0xa7, 0x0a, 0xfb, 0xa0, 0x4d, 0xa8,
+            0x65, 0xf9, 0x82, 0x17, 0x34, 0xb5, 0x56, 0xcc,
+            0xa9, 0xfb, 0x57, 0x10, 0xfc, 0x13, 0x38, 0xb9,
+            0x7f, 0xba, 0x81, 0x10, 0x33, 0xf7, 0x55, 0xe3,
+        ];
+
+    let tx_id = Txid::from_byte_array(tx_bytes);
+
+    monitor.outputs_to_watch.insert(tx_id, vec![(8, ScriptBuf::new())]);
+
+    monitor.block_connected(header, txdata, height, broadcaster.clone());
+
+    println!("tx: {:?}\n\n", tx);
+    println!("outputs_to_watch: {:?}\n\n", monitor.outputs_to_watch);
+    
+    let broadcasted_txs = broadcaster.broadcasted_txs;
+    println!("broadcasted_txs: {:?}\n\n", broadcasted_txs);
+
+    println!("outputs_to_watch len: {:?}\n\n", monitor.outputs_to_watch.len());
+
+    assert!(monitor.outputs_to_watch.contains_key(&tx.compute_txid()), "Student must update outputs_to_watch with new outputs");
+
+}
+
+#[tokio::test]
+async fn test_transactions_confirmed() {
+
+    let mut monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+    let mut channel_manager = ChannelManager { chain_monitor };
+
+    let tx_raw = 
+        "01000000000103fc9aa70afba04da865f9821734b556cca9fb5710\
+         fc1338b97fba811033f755e308000000000000000019b37457784d\
+         d04936f011f733b8016c247a9ef08d40007a54a5159d1fc62ee216\
+         00000000000000004c4f2937c6ccf8256d9711a19df1ae62172297\
+         0bf46be925ff15f490efa1633d01000000000000000002c0e1e400\
+         0000000017a9146983f776902c1d1d0355ae0962cb7bc69e9afbde\
+         8706a1e600000000001600144257782711458506b89f255202d645\
+         e25c41144702483045022100dcada0499865a49d0aab8cb113c5f8\
+         3fd5a97abc793f97f3f53aa4b9d1192ed702202094c7934666a30d\
+         6adb1cc9e3b6bc14d2ffebd3200f3908c40053ef2df640b5012103\
+         15434bb59b615a383ae87316e784fc11835bb97fab33fdd2578025\
+         e9968d516e0247304402201d90b3197650569eba4bc0e0b1e2dca7\
+         7dfac7b80d4366f335b67e92e0546e4402203b4be1d443ad7e3a5e\
+         a92aafbcdc027bf9ccf5fe68c0bc8f3ebb6ab806c5464c012103e0\
+         0d92b0fe60731a54fdbcc6920934159db8ffd69d55564579b69a22\
+         ec5bb7530247304402205ab83b734df818e64d8b9e86a8a75f9d00\
+         5c0c6e1b988d045604853ab9ccbde002205a580235841df609d6bd\
+         67534bdcd301999b18e74e197e9e476cdef5fdcbf822012102ebb3\
+         e8a4638ede4721fb98e44e3a3cd61fecfe744461b85e0b6a6a1017\
+         5d5aca00000000";
+
+    let tx: Transaction = deserialize(Vec::from_hex(tx_raw).unwrap().as_slice()).unwrap();
+
+    let header = HeaderExercise {
+        version: 2
+    };
+
+    println!("outputs_to_watch len: {:?}\n\n", monitor.outputs_to_watch.len());
+
+    let txdata: TransactionData = vec![tx.clone()];
+
+    let height = 100;
+
+    let script = ScriptBuf::from_hex("a9146983f776902c1d1d0355ae0962cb7bc69e9afbde87").unwrap();
+
+    let tx_bytes: [u8; 32] = [
+            0xfc, 0x9a, 0xa7, 0x0a, 0xfb, 0xa0, 0x4d, 0xa8,
+            0x65, 0xf9, 0x82, 0x17, 0x34, 0xb5, 0x56, 0xcc,
+            0xa9, 0xfb, 0x57, 0x10, 0xfc, 0x13, 0x38, 0xb9,
+            0x7f, 0xba, 0x81, 0x10, 0x33, 0xf7, 0x55, 0xe3,
+        ];
+
+    let tx_id = Txid::from_byte_array(tx_bytes);
+
+    let outpoint = OutPoint{txid: tx_id, index: 8};
+
+    channel_manager.chain_monitor.watch_channel(outpoint, monitor);
+
+    channel_manager.chain_monitor.monitors.get_mut(&outpoint).unwrap()
+    .outputs_to_watch.insert(tx_id, vec![(8, ScriptBuf::new())]);
+
+    channel_manager.chain_monitor.transactions_confirmed(header, txdata, height, broadcaster.clone());
+
+    println!("tx: {:?}\n\n", tx);
+
+    let outputs = &channel_manager.chain_monitor.monitors.get_mut(&outpoint).unwrap().outputs_to_watch;
+
+    println!("outputs_to_watch: {:?}\n\n", outputs);
+
+    assert!(outputs.contains_key(&tx.compute_txid()), "Student must update outputs_to_watch with new outputs");
+
 }

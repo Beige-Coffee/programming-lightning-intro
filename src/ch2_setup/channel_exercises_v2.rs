@@ -12,9 +12,57 @@ use bitcoin::hash_types::{Txid};
 use bitcoin::script::ScriptBuf;
 use internal::bitcoind_client::BitcoindClient;
 use lightning::chain::chaininterface::BroadcasterInterface;
-use bitcoin::block::Header;
 use bitcoin::{Network};
 use bitcoin::hashes::Hash;
+
+
+// Mock Broadcaster
+#[derive(Hash, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct MockBroadcaster {
+    pub broadcasted_txs: Vec<Transaction>,
+}
+
+impl MockBroadcaster {
+   pub fn new() -> Self {
+        Self { broadcasted_txs: Vec::new() }
+    }
+
+   pub fn broadcast_transactions(&mut self, txs: &[&Transaction]) {
+        for tx in txs {
+            self.broadcasted_txs.push((*tx).clone());
+        }
+    }
+}
+
+// Mock FileStore
+pub struct MockFileStore {
+    store: HashMap<String, Vec<u8>>,
+}
+
+impl MockFileStore {
+    pub fn new() -> Self {
+        Self { store: HashMap::new() }
+    }
+
+    fn get(&self, key: &str) -> Option<Vec<u8>> {
+        self.store.get(key).cloned()
+    }
+}
+
+impl MockFileStore {
+    fn write(&mut self, key: &str, value: &[u8]) -> Result<(), ()> {
+        self.store.insert(key.to_string(), value.to_vec());
+        Ok(())
+    }
+
+    fn read(&self, key: &str) -> Result<Vec<u8>, ()> {
+        self.store.get(key).cloned().ok_or(())
+    }
+
+    fn persist_channel(&mut self, funding_outpoint: OutPoint, channel_monitor: ChannelMonitor) -> ChannelMonitorUpdateStatus{
+      ChannelMonitorUpdateStatus::Completed
+    }
+}
 
 //
 //Channel Monitor
@@ -29,16 +77,22 @@ pub struct Preimage(pub [u8; 32]);
 
 pub type TransactionData = Vec<Transaction>;
 
+
+#[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
+pub struct Header {
+  pub version: u32,
+}
+
 #[derive(Clone)]
 pub struct ChannelMonitor {
-  channel_id: ChannelId,
-  funding_outpoint: OutPoint,
-  channel_value_sats: u64,
-  current_commitment_tx: Option<Transaction>,
-  best_block: BestBlock,
-  commitment_secrets: Vec<[u8; 32]>,
-  preimages: Vec<Preimage>,
-  outputs_to_watch: HashMap<Txid, Vec<(u32, ScriptBuf)>>,
+  pub channel_id: ChannelId,
+  pub funding_outpoint: OutPoint,
+  pub channel_value_sats: u64,
+  pub current_commitment_tx: Option<Transaction>,
+  pub best_block: BestBlock,
+  pub commitment_secrets: Vec<[u8; 32]>,
+  pub preimages: Vec<Preimage>,
+  pub outputs_to_watch: HashMap<Txid, Vec<(u32, ScriptBuf)>>,
 }
 
 pub enum ChannelMonitorUpdate {
@@ -70,7 +124,7 @@ impl ChannelMonitor{
     header: Header,
     txdata: TransactionData,
     height: u32,
-    broadcaster: BitcoindClient
+    mut broadcaster: MockBroadcaster
   ) {
 
     // for each transaction in data
@@ -155,13 +209,13 @@ impl ChannelMonitor {
 //
 
 pub struct ChainMonitor {
-  monitors: HashMap<OutPoint, ChannelMonitor>,
-  persister: FileStore,
-  broadcaster: BitcoindClient
+  pub monitors: HashMap<OutPoint, ChannelMonitor>,
+  pub persister: MockFileStore,
+  pub broadcaster: MockBroadcaster
 }
 
 impl ChainMonitor {
-  fn watch_channel(&mut self, funding_outpoint: OutPoint, channel_monitor: ChannelMonitor) -> Result<ChannelMonitorUpdateStatus, ()> {
+  pub fn watch_channel(&mut self, funding_outpoint: OutPoint, channel_monitor: ChannelMonitor) -> Result<ChannelMonitorUpdateStatus, ()> {
     self.monitors.insert(funding_outpoint, channel_monitor.clone());
     let result = self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
 
@@ -182,11 +236,11 @@ impl ChainMonitor {
     self.persister.persist_channel(funding_outpoint, channel_monitor.clone());
   }
 
-  fn transactions_confirmed(&mut self,
+  pub fn transactions_confirmed(&mut self,
     header: Header,
-    txdata: &TransactionData,
+    txdata: TransactionData,
     height: u32,
-    broadcaster: &BitcoindClient
+    broadcaster: MockBroadcaster
   ) {
     for (_, monitor) in self.monitors.iter_mut() {
       monitor.block_connected(
@@ -231,7 +285,7 @@ impl OutboundV1Channel{
   }
 
 pub struct ChannelManager {
-  chain_monitor: ChainMonitor,
+  pub chain_monitor: ChainMonitor,
 }
 
 impl ChannelManager {
