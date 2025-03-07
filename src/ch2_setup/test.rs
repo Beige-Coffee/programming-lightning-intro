@@ -53,7 +53,7 @@ use crate::internal::helper::{
 };
 use crate::ch2_setup::channel_exercises_v2::{ChannelMonitor, MockBroadcaster, MockFileStore,
                                             ChainMonitor, Header as HeaderExercise, TransactionData,
-                                            ChannelManager};
+                                            ChannelManager, ChannelMonitorUpdate, Preimage};
 use lightning::chain::transaction::OutPoint;
 use bitcoin::Transaction;
 use bitcoin::consensus::{deserialize, serialize};
@@ -62,6 +62,7 @@ use bitcoin::script::ScriptBuf;
 use bitcoin::hashes::Hash;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hash_types::{Txid, BlockHash};
+use crate::ch2_setup::persist_exercise_v2::{ChannelMonitorUpdateStatus};
 
 #[tokio::test]
 async fn test_new_bitcoin_client() {
@@ -347,6 +348,28 @@ async fn test_handle_open_channel() {
     
 }
 
+static TX_RAW: &str = 
+    "01000000000103fc9aa70afba04da865f9821734b556cca9fb5710\
+     fc1338b97fba811033f755e308000000000000000019b37457784d\
+     d04936f011f733b8016c247a9ef08d40007a54a5159d1fc62ee216\
+     00000000000000004c4f2937c6ccf8256d9711a19df1ae62172297\
+     0bf46be925ff15f490efa1633d01000000000000000002c0e1e400\
+     0000000017a9146983f776902c1d1d0355ae0962cb7bc69e9afbde\
+     8706a1e600000000001600144257782711458506b89f255202d645\
+     e25c41144702483045022100dcada0499865a49d0aab8cb113c5f8\
+     3fd5a97abc793f97f3f53aa4b9d1192ed702202094c7934666a30d\
+     6adb1cc9e3b6bc14d2ffebd3200f3908c40053ef2df640b5012103\
+     15434bb59b615a383ae87316e784fc11835bb97fab33fdd2578025\
+     e9968d516e0247304402201d90b3197650569eba4bc0e0b1e2dca7\
+     7dfac7b80d4366f335b67e92e0546e4402203b4be1d443ad7e3a5e\
+     a92aafbcdc027bf9ccf5fe68c0bc8f3ebb6ab806c5464c012103e0\
+     0d92b0fe60731a54fdbcc6920934159db8ffd69d55564579b69a22\
+     ec5bb7530247304402205ab83b734df818e64d8b9e86a8a75f9d00\
+     5c0c6e1b988d045604853ab9ccbde002205a580235841df609d6bd\
+     67534bdcd301999b18e74e197e9e476cdef5fdcbf822012102ebb3\
+     e8a4638ede4721fb98e44e3a3cd61fecfe744461b85e0b6a6a1017\
+     5d5aca00000000";
+
 #[tokio::test]
 async fn test_block_connected() {
     
@@ -356,29 +379,7 @@ async fn test_block_connected() {
 
     let persister = MockFileStore::new();
 
-    let tx_raw = 
-        "01000000000103fc9aa70afba04da865f9821734b556cca9fb5710\
-         fc1338b97fba811033f755e308000000000000000019b37457784d\
-         d04936f011f733b8016c247a9ef08d40007a54a5159d1fc62ee216\
-         00000000000000004c4f2937c6ccf8256d9711a19df1ae62172297\
-         0bf46be925ff15f490efa1633d01000000000000000002c0e1e400\
-         0000000017a9146983f776902c1d1d0355ae0962cb7bc69e9afbde\
-         8706a1e600000000001600144257782711458506b89f255202d645\
-         e25c41144702483045022100dcada0499865a49d0aab8cb113c5f8\
-         3fd5a97abc793f97f3f53aa4b9d1192ed702202094c7934666a30d\
-         6adb1cc9e3b6bc14d2ffebd3200f3908c40053ef2df640b5012103\
-         15434bb59b615a383ae87316e784fc11835bb97fab33fdd2578025\
-         e9968d516e0247304402201d90b3197650569eba4bc0e0b1e2dca7\
-         7dfac7b80d4366f335b67e92e0546e4402203b4be1d443ad7e3a5e\
-         a92aafbcdc027bf9ccf5fe68c0bc8f3ebb6ab806c5464c012103e0\
-         0d92b0fe60731a54fdbcc6920934159db8ffd69d55564579b69a22\
-         ec5bb7530247304402205ab83b734df818e64d8b9e86a8a75f9d00\
-         5c0c6e1b988d045604853ab9ccbde002205a580235841df609d6bd\
-         67534bdcd301999b18e74e197e9e476cdef5fdcbf822012102ebb3\
-         e8a4638ede4721fb98e44e3a3cd61fecfe744461b85e0b6a6a1017\
-         5d5aca00000000";
-
-    let tx: Transaction = deserialize(Vec::from_hex(tx_raw).unwrap().as_slice()).unwrap();
+    let tx: Transaction = deserialize(Vec::from_hex(TX_RAW).unwrap().as_slice()).unwrap();
 
     let header = HeaderExercise {
         version: 2
@@ -420,7 +421,7 @@ async fn test_block_connected() {
 #[tokio::test]
 async fn test_transactions_confirmed() {
 
-    let mut monitor = ChannelMonitor::new();
+    let monitor = ChannelMonitor::new();
 
     let broadcaster = MockBroadcaster::new();
 
@@ -432,31 +433,19 @@ async fn test_transactions_confirmed() {
         broadcaster: broadcaster.clone(),
     };
 
-    let mut channel_manager = ChannelManager { chain_monitor };
+    let seed = [1_u8; 32];
+    let child_index: usize = 0;
+    let keys_manager = SimpleKeysManager::new(seed);
 
-    let tx_raw = 
-        "01000000000103fc9aa70afba04da865f9821734b556cca9fb5710\
-         fc1338b97fba811033f755e308000000000000000019b37457784d\
-         d04936f011f733b8016c247a9ef08d40007a54a5159d1fc62ee216\
-         00000000000000004c4f2937c6ccf8256d9711a19df1ae62172297\
-         0bf46be925ff15f490efa1633d01000000000000000002c0e1e400\
-         0000000017a9146983f776902c1d1d0355ae0962cb7bc69e9afbde\
-         8706a1e600000000001600144257782711458506b89f255202d645\
-         e25c41144702483045022100dcada0499865a49d0aab8cb113c5f8\
-         3fd5a97abc793f97f3f53aa4b9d1192ed702202094c7934666a30d\
-         6adb1cc9e3b6bc14d2ffebd3200f3908c40053ef2df640b5012103\
-         15434bb59b615a383ae87316e784fc11835bb97fab33fdd2578025\
-         e9968d516e0247304402201d90b3197650569eba4bc0e0b1e2dca7\
-         7dfac7b80d4366f335b67e92e0546e4402203b4be1d443ad7e3a5e\
-         a92aafbcdc027bf9ccf5fe68c0bc8f3ebb6ab806c5464c012103e0\
-         0d92b0fe60731a54fdbcc6920934159db8ffd69d55564579b69a22\
-         ec5bb7530247304402205ab83b734df818e64d8b9e86a8a75f9d00\
-         5c0c6e1b988d045604853ab9ccbde002205a580235841df609d6bd\
-         67534bdcd301999b18e74e197e9e476cdef5fdcbf822012102ebb3\
-         e8a4638ede4721fb98e44e3a3cd61fecfe744461b85e0b6a6a1017\
-         5d5aca00000000";
+    let mut channel_manager = ChannelManager { 
+        chain_monitor: chain_monitor,
+        pending_peer_events: Vec::new(),
+        pending_user_events: Vec::new(),
+        peers: HashMap::new(),
+        signer_provider: keys_manager,
+    };
 
-    let tx: Transaction = deserialize(Vec::from_hex(tx_raw).unwrap().as_slice()).unwrap();
+    let tx: Transaction = deserialize(Vec::from_hex(TX_RAW).unwrap().as_slice()).unwrap();
 
     let header = HeaderExercise {
         version: 2
@@ -496,4 +485,125 @@ async fn test_transactions_confirmed() {
 
     assert!(outputs.contains_key(&tx.compute_txid()), "Student must update outputs_to_watch with new outputs");
 
+}
+
+#[tokio::test]
+async fn test_watch_channel() {
+    let channel_monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let mut chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+
+    let tx_bytes: [u8; 32] = [
+            0xfc, 0x9a, 0xa7, 0x0a, 0xfb, 0xa0, 0x4d, 0xa8,
+            0x65, 0xf9, 0x82, 0x17, 0x34, 0xb5, 0x56, 0xcc,
+            0xa9, 0xfb, 0x57, 0x10, 0xfc, 0x13, 0x38, 0xb9,
+            0x7f, 0xba, 0x81, 0x10, 0x33, 0xf7, 0x55, 0xe3,
+        ];
+
+    let tx_id = Txid::from_byte_array(tx_bytes);
+
+    let funding_outpoint = OutPoint{txid: tx_id, index: 8};
+
+    println!("monitors: {:?}", chain_monitor.monitors.len());
+
+    let result = chain_monitor.watch_channel(funding_outpoint, channel_monitor).unwrap();
+
+    let num_monitors_after_watch = chain_monitor.monitors.len();
+
+    println!("monitors: {:?}", chain_monitor.monitors.len());
+
+    assert_eq!(1, num_monitors_after_watch);
+    assert_eq!(result, ChannelMonitorUpdateStatus::Completed);
+}
+
+#[tokio::test]
+async fn test_update_monitor() {
+    let mut channel_monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+    let preimage_update = ChannelMonitorUpdate::PaymentPreimage { payment_preimage: Preimage([9; 32]) };
+    let secret_update = ChannelMonitorUpdate::CommitmentSecret { secret: [10; 32] };
+
+    println!("channel_monitor - # commitment_secrets: {:?}", channel_monitor.commitment_secrets.len());
+    println!("channel_monitor - # preimages: {:?}", channel_monitor.preimages.len());
+    
+    channel_monitor.update_monitor(preimage_update);
+    channel_monitor.update_monitor(secret_update);
+
+
+    assert_eq!(1, channel_monitor.commitment_secrets.len());
+    assert_eq!(1, channel_monitor.preimages.len());
+}
+
+#[tokio::test]
+async fn test_update_channel() {
+    let channel_monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let mut chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+    let tx_bytes: [u8; 32] = [
+        0xfc, 0x9a, 0xa7, 0x0a, 0xfb, 0xa0, 0x4d, 0xa8,
+        0x65, 0xf9, 0x82, 0x17, 0x34, 0xb5, 0x56, 0xcc,
+        0xa9, 0xfb, 0x57, 0x10, 0xfc, 0x13, 0x38, 0xb9,
+        0x7f, 0xba, 0x81, 0x10, 0x33, 0xf7, 0x55, 0xe3,
+    ];
+
+    let tx_id = Txid::from_byte_array(tx_bytes);
+
+    let funding_outpoint = OutPoint{txid: tx_id, index: 8};
+
+    let result = chain_monitor.watch_channel(funding_outpoint, channel_monitor).unwrap();
+
+    let preimage_update = ChannelMonitorUpdate::PaymentPreimage { payment_preimage: Preimage([9; 32]) };
+    let secret_update = ChannelMonitorUpdate::CommitmentSecret { secret: [10; 32] };
+
+    let channel_mon_before = chain_monitor.monitors.get_mut(&funding_outpoint).unwrap();
+
+    let store_before = chain_monitor.persister.store.clone();
+
+    println!("chain_monitor: commitment_secrets {:?}", channel_mon_before.commitment_secrets);
+    println!("chain_monitor: secret_update {:?}", channel_mon_before.preimages);
+    println!("persister: store {:?}", chain_monitor.persister.store);
+
+    chain_monitor.update_channel(funding_outpoint, preimage_update);
+    chain_monitor.update_channel(funding_outpoint, secret_update);
+
+    let channel_mon_after = chain_monitor.monitors.get_mut(&funding_outpoint).unwrap();
+    let store_after = chain_monitor.persister.store.clone();
+
+
+    println!("chain_monitor: commitment_secrets {:?}", channel_mon_after.commitment_secrets);
+    println!("chain_monitor: secret_update {:?}", channel_mon_after.preimages);
+    println!("persister: store {:?}", chain_monitor.persister.store);
+    
+
+    assert_eq!(1, channel_mon_after.commitment_secrets.len());
+    assert_eq!(1, channel_mon_after.preimages.len());
+    assert_ne!(store_before, store_after);
 }

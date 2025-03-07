@@ -14,3 +14,4 @@ pub mod channel_exercises_v2;
 pub mod solutions;
 pub mod test;
 pub mod peer_manager_exercise;
+pub mod peer_manager_structs;

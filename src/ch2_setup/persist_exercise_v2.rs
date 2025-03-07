@@ -9,6 +9,7 @@ pub struct FileStore {
   data_dir: PathBuf
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ChannelMonitorUpdateStatus {
   Completed,
   UnrecoverableError
