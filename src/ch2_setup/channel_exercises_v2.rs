@@ -16,8 +16,10 @@ use bitcoin::{Network};
 use bitcoin::hashes::Hash;
 use rand::Rng;
 use lightning::ln::msgs;
-use internal::events::{MessageSendEvent, OpenChannel, FundingCreated, Event};
-use internal::messages::{AcceptChannel};
+use internal::events::{MessageSendEvent, Event};
+use internal::messages::{OpenChannel, AcceptChannel,
+                                            FundingCreated, FundingSigned,
+                                            ChannelReady};
 use crate::ch3_keys::exercises::{
     SimpleKeysManager,
 };
@@ -268,7 +270,7 @@ impl ChainMonitor {
 //
 //Channel Manager
 //
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Channel {
   their_network_key: PublicKey,
   temporary_channel_id: ChannelId,
@@ -339,9 +341,9 @@ impl ChannelManager {
   
   pub fn create_channel(&mut self, their_network_key: PublicKey, channel_value_satoshis: u64) {
 
-    let channel = Channel::new(their_network_key, channel_value_satoshis);
+    let mut channel = Channel::new(their_network_key, channel_value_satoshis);
 
-    self.peers.insert(their_network_key, channel);
+    self.peers.insert(their_network_key, channel.clone());
 
     let msg = channel.open_channel_msg(channel_value_satoshis);
 
@@ -358,7 +360,7 @@ impl ChannelManager {
 
     let channel_value_satoshis = channel.channel_value_satoshis;
     let temp_channel_id = channel.temporary_channel_id;
-    let output_script = channel.output_script;
+    let output_script = channel.output_script.clone();
     
     self.pending_user_events.push(
       Event::FundingGenerationReady {
@@ -370,7 +372,7 @@ impl ChannelManager {
     );
   }
 
-  pub fn handle_funding_signed(&mut self, counterparty_node_id: &PublicKey, msg: AcceptChannel){
+  pub fn handle_funding_signed(&mut self, counterparty_node_id: &PublicKey, msg: FundingSigned){
     let channel = self.peers.get_mut(&counterparty_node_id).unwrap();
 
     let funding_outpoint = channel.funding_outpoint;

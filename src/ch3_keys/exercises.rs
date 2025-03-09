@@ -27,7 +27,7 @@ use bitcoin::hashes::sha256d::Hash as Sha256dHash;
 use bitcoin::secp256k1::Message;
 use bitcoin::hashes::{Hash, HashEngine};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SimpleKeysManager {
     pub secp_ctx: Secp256k1<secp256k1::All>,
     pub node_secret: SecretKey,
@@ -36,7 +36,7 @@ pub struct SimpleKeysManager {
     pub coop_close_pubkey: PublicKey,
     pub channel_master_key: Xpriv,
     pub inbound_payment_key: SecretKey,
-    pub channel_child_index: AtomicUsize,
+    pub channel_child_index: u32,
     pub seed: [u8; 32],
 }
 
@@ -69,7 +69,7 @@ impl SimpleKeysManager {
             coop_close_pubkey: coop_close_pubkey,
             channel_master_key: channel_master_key,
             inbound_payment_key: inbound_payment_key,
-            channel_child_index: AtomicUsize::new(0),
+            channel_child_index: 0,
             seed: seed,
         }
     }
@@ -143,7 +143,7 @@ pub fn new_simple_key_manager(seed: [u8; 32]) -> SimpleKeysManager {
         coop_close_pubkey: coop_close_pubkey,
         channel_master_key: channel_master_key,
         inbound_payment_key: inbound_payment_key,
-        channel_child_index: AtomicUsize::new(0),
+        channel_child_index: 0,
         seed: seed,
     }
 }

@@ -24,7 +24,7 @@ use rand::{thread_rng, Rng};
 #[test]
 fn test_new_simple_key_manager() {
     let seed = [1_u8; 32];
-    let child_index: usize = 0;
+    let child_index = 0;
     let keys_interface_impl = SimpleKeysManager::new(seed);
 
     // check seed
@@ -47,8 +47,7 @@ fn test_new_simple_key_manager() {
     // check channel_child_index
     assert_eq!(
         keys_interface_impl
-            .channel_child_index
-            .load(Ordering::SeqCst),
+            .channel_child_index,
         child_index
     );
 }

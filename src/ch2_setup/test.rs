@@ -7,12 +7,15 @@ use crate::ch2_setup::exercises::{
 use lightning::ln::types::ChannelId;
 use bitcoin::secp256k1::{self, Secp256k1};
 use crate::ch2_setup::peer_manager_exercise::{
-    PeerManager as PeerManagerExercise, OpenChannelMsg, OpenChannelStatus};
+    OpenChannelMsg, OpenChannelStatus};
 use crate::ch3_keys::exercises::{
     SimpleKeysManager,
 };
+use crate::ch2_setup::peer_manager_structs::{
+    PeerManager, SocketDescriptor};
+
 use crate::ch2_setup::network_exercise_v2::{
-    start_listener,PeerManager
+    start_listener, PeerManager as PeerManagerNetworkEx
 };
 use crate::ch2_setup::bitcoin_client::{
     BitcoinClient,
@@ -63,6 +66,11 @@ use bitcoin::hashes::Hash;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hash_types::{Txid, BlockHash};
 use crate::ch2_setup::persist_exercise_v2::{ChannelMonitorUpdateStatus};
+use internal::messages::{OpenChannel, AcceptChannel,
+    FundingCreated, FundingSigned,
+    ChannelReady};
+use bitcoin::secp256k1::{ecdsa::Signature};
+use bitcoin::secp256k1::ffi::Signature as FFISignature;
 
 #[tokio::test]
 async fn test_new_bitcoin_client() {
@@ -234,9 +242,9 @@ async fn test_start_listener() {
     let port = 9735;
 
     // Create a fake PeerManager
-    let peer_manager = PeerManager {
-        id: "test_node".to_string(),
-    };
+    let peer_manager = PeerManagerNetworkEx{
+        id: "test_node".to_string()
+};
 
     // Spawn the listener in the background
     tokio::spawn(async move {
@@ -272,11 +280,7 @@ async fn test_handle_open_channel() {
     let child_index: usize = 0;
     let keys_manager = SimpleKeysManager::new(seed);
     
-    let peer_manager = PeerManagerExercise {
-        peers: HashMap::new(),
-        node_signer: keys_manager,
-        secp_ctx: Secp256k1::signing_only(),
-    };
+    let peer_manager = PeerManager::new();
 
     let their_node_id = pubkey_from_private_key(&[0x01; 32]);
 
@@ -606,4 +610,154 @@ async fn test_update_channel() {
     assert_eq!(1, channel_mon_after.commitment_secrets.len());
     assert_eq!(1, channel_mon_after.preimages.len());
     assert_ne!(store_before, store_after);
+}
+
+#[tokio::test]
+async fn test_create_channel() {
+
+    let monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+    let seed = [1_u8; 32];
+    let child_index: usize = 0;
+    let keys_manager = SimpleKeysManager::new(seed);
+
+    let pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let channel_balance = 100_000_000;
+
+    let mut channel_manager = ChannelManager { 
+        chain_monitor: chain_monitor,
+        pending_peer_events: Vec::new(),
+        pending_user_events: Vec::new(),
+        peers: HashMap::new(),
+        signer_provider: keys_manager,
+    };
+
+    channel_manager.create_channel(pubkey, channel_balance);
+
+    println!("channel_manager.peers.len(): {:?}\n\n", channel_manager.peers.len());
+
+    println!("channel_manager.pending_peer_events.len(): {:?}\n\n", channel_manager.pending_peer_events.len());
+
+    assert_eq!(1, channel_manager.peers.len());
+
+    assert_eq!(1, channel_manager.pending_peer_events.len());
+
+}
+
+#[tokio::test]
+async fn test_accept_channel() {
+
+    let monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+    let seed = [1_u8; 32];
+    let child_index: usize = 0;
+    let keys_manager = SimpleKeysManager::new(seed);
+
+    let pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let channel_balance = 100_000_000;
+    let msg = AcceptChannel{
+        channel_value_satoshis: channel_balance,
+        temporary_channel_id: ChannelId::new_zero()
+    };
+
+    let mut channel_manager = ChannelManager { 
+        chain_monitor: chain_monitor,
+        pending_peer_events: Vec::new(),
+        pending_user_events: Vec::new(),
+        peers: HashMap::new(),
+        signer_provider: keys_manager,
+    };
+
+    channel_manager.create_channel(pubkey, channel_balance);
+
+    channel_manager.handle_accept_channel(&pubkey, msg);
+
+    println!("channel_manager.pending_user_events.len(): {:?}\n\n", channel_manager.pending_user_events.len());
+
+    assert_eq!(1, channel_manager.pending_user_events.len());
+
+}
+
+#[tokio::test]
+async fn test_funding_signed() {
+
+    let monitor = ChannelMonitor::new();
+
+    let broadcaster = MockBroadcaster::new();
+
+    let persister = MockFileStore::new();
+
+    let chain_monitor = ChainMonitor {
+        monitors: HashMap::new(),
+        persister,
+        broadcaster: broadcaster.clone(),
+    };
+
+    let seed = [1_u8; 32];
+    let child_index: usize = 0;
+    let keys_manager = SimpleKeysManager::new(seed);
+
+    let pubkey = pubkey_from_private_key(&[0x01; 32]);
+    let channel_balance = 100_000_000;
+    let msg = FundingSigned{
+        channel_id: ChannelId::new_zero(),
+        signature: Signature::from(unsafe { FFISignature::new() })
+    };
+
+    let mut channel_manager = ChannelManager { 
+        chain_monitor: chain_monitor,
+        pending_peer_events: Vec::new(),
+        pending_user_events: Vec::new(),
+        peers: HashMap::new(),
+        signer_provider: keys_manager,
+    };
+
+    channel_manager.create_channel(pubkey, channel_balance);
+
+    channel_manager.handle_funding_signed(&pubkey, msg);
+
+    println!("channel_manager.chain_monitor.monitors.len(): {:?}\n\n", channel_manager.chain_monitor.monitors.len());
+
+    assert_eq!(1, channel_manager.chain_monitor.monitors.len());
+
+}
+
+#[tokio::test]
+async fn test_read_event() {
+
+    let data_open_channel: &[u8] = &[0x00];
+    let data_node_announcement = [0x01];
+    let data_onion_message = [0x02];
+
+    let mut peer_manager = PeerManager::new();
+
+    let pubkey = pubkey_from_private_key(&[0x01; 32]);
+
+    let socket_descriptor = SocketDescriptor{
+        pubkey: pubkey,
+        addr: "test".to_string()
+    };
+
+    peer_manager.read_event(socket_descriptor, data_open_channel)
+
 }
