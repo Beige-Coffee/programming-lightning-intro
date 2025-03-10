@@ -408,7 +408,7 @@ async fn test_block_connected() {
 
     monitor.outputs_to_watch.insert(tx_id, vec![(8, ScriptBuf::new())]);
 
-    monitor.block_connected(header, txdata, height, &broadcaster);
+    monitor.block_connected(header, txdata, height, broadcaster);
 
     println!("tx: {:?}\n\n", tx);
     println!("outputs_to_watch: {:?}\n\n", monitor.outputs_to_watch);
