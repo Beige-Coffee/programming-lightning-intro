@@ -139,7 +139,7 @@ impl ChannelMonitor{
     header: Header,
     txdata: TransactionData,
     height: u32,
-    mut broadcaster: MockBroadcaster
+    broadcaster: &mut MockBroadcaster
   ) {
 
     // for each transaction in data
@@ -262,7 +262,7 @@ impl ChainMonitor {
         header,
         txdata.clone(),
         height,
-        self.broadcaster.clone());
+        &self.broadcaster);
     }
   }
 }
