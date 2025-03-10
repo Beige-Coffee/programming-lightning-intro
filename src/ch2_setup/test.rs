@@ -24,9 +24,9 @@ use crate::ch2_setup::bitcoin_client_solutions::BitcoinClient as BitcoinClientSo
 use crate::ch2_setup::persist_exercise::{
     SimpleStore
 };
-use crate::ch2_setup::payment_exercise::{
-    send_payment
-};
+//use crate::ch2_setup::payment_exercise::{
+//    send_payment
+//};
 use crate::ch2_setup::fee_estimator_exercise::{
     get_est_sat_per_1000_weight
 };

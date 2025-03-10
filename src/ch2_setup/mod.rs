@@ -5,7 +5,7 @@ pub mod events;
 pub mod exercises;
 pub mod fee_estimator_exercise;
 pub mod helpers;
-pub mod payment_exercise;
+//pub mod payment_exercise;
 pub mod peer_listener_exercise;
 pub mod persist_exercise;
 pub mod persist_exercise_v2;
