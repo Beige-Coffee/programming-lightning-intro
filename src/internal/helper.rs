@@ -26,6 +26,7 @@ pub fn tweak_pubkey(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
 
 pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
     let mut sha = Sha256::engine();
+
     sha.input(&key1.serialize());
     sha.input(&key2.serialize());
 

@@ -13,6 +13,7 @@ use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, W
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
 
+
 pub fn two_of_two_multisig_witness_script(
     pubkey1: &PublicKey,
     pubkey2: &PublicKey,

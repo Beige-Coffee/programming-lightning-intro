@@ -408,7 +408,7 @@ async fn test_block_connected() {
 
     monitor.outputs_to_watch.insert(tx_id, vec![(8, ScriptBuf::new())]);
 
-    monitor.block_connected(header, txdata, height, broadcaster);
+    monitor.block_connected(header, txdata, height, broadcaster.clone());
 
     println!("tx: {:?}\n\n", tx);
     println!("outputs_to_watch: {:?}\n\n", monitor.outputs_to_watch);
@@ -479,7 +479,7 @@ async fn test_transactions_confirmed() {
     channel_manager.chain_monitor.monitors.get_mut(&outpoint).unwrap()
     .outputs_to_watch.insert(tx_id, vec![(8, ScriptBuf::new())]);
 
-    channel_manager.chain_monitor.transactions_confirmed(header, txdata, height, broadcaster.clone());
+    channel_manager.chain_monitor.transactions_confirmed(header, txdata, height);
 
     println!("tx: {:?}\n\n", tx);
 

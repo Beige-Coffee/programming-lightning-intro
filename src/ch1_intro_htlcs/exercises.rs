@@ -64,12 +64,29 @@ pub fn build_refund_transaction(
     tx
 }
 
+use bitcoin::hashes::sha256::Hash as Sha256;
+use bitcoin::hashes::HashEngine;
+use bitcoin::secp256k1::Scalar;
 pub fn generate_revocation_pubkey(
     countersignatory_basepoint: PublicKey,
     per_commitment_point: PublicKey,
 ) -> PublicKey {
     
-    unimplemented!()
+    let mut sha = Sha256::engine();
+
+    println!("{:?}", countersignatory_basepoint.serialize());
+
+    sha.input(&countersignatory_basepoint.serialize());
+    sha.input(&per_commitment_point.serialize());
+
+    let stuff = Sha256::from_engine(sha).to_byte_array();
+
+    let scalar = Scalar::from_be_bytes(stuff).unwrap();
+    let scalar_int = BigUint::from_bytes_be(&scalar.to_be_bytes());
+    println!("Scalar as decimal: {}", scalar_int);
+    
+    per_commitment_point
+    //unimplemented!()
     
 }
 
