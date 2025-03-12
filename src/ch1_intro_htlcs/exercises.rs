@@ -18,8 +18,13 @@ pub fn two_of_two_multisig_witness_script(
     pubkey2: &PublicKey,
 ) -> ScriptBuf {
     
-    unimplemented!()
-    
+    Builder::new()
+        .push_int(2)
+        .push_key(pubkey1)
+        .push_key(pubkey2)
+        .push_int(2)
+        .push_opcode(opcodes::OP_CHECKMULTISIG)
+        .into_script()
 }
 
 pub fn timelocked_p2pkh(pubkey: &PublicKey, blocks_or_seconds: i64) -> ScriptBuf {
@@ -46,22 +51,8 @@ pub fn build_refund_transaction(
     bob_balance: u64
 ) -> Transaction {
 
-    let alice_script = p2wpkh_output_script(alice_pubkey);
-
-    let bob_script = p2wpkh_output_script(bob_pubkey);
-
-    let alice_output = build_output(alice_balance, alice_script);
-
-    let bob_output = build_output(bob_balance, bob_script);
-
-    let version = Version::TWO;
-    let locktime = LockTime::ZERO;
-
-    let tx = build_transaction(version,
-                      locktime,
-                      vec![funding_txin],
-                      vec![alice_output, bob_output]);
-    tx
+    unimplemented!()
+    
 }
 
 use bitcoin::hashes::sha256::Hash as Sha256;
@@ -72,21 +63,7 @@ pub fn generate_revocation_pubkey(
     per_commitment_point: PublicKey,
 ) -> PublicKey {
     
-    let mut sha = Sha256::engine();
-
-    println!("{:?}", countersignatory_basepoint.serialize());
-
-    sha.input(&countersignatory_basepoint.serialize());
-    sha.input(&per_commitment_point.serialize());
-
-    let stuff = Sha256::from_engine(sha).to_byte_array();
-
-    let scalar = Scalar::from_be_bytes(stuff).unwrap();
-    let scalar_int = BigUint::from_bytes_be(&scalar.to_be_bytes());
-    println!("Scalar as decimal: {}", scalar_int);
-    
-    per_commitment_point
-    //unimplemented!()
+    unimplemented!()
     
 }
 
