@@ -1,0 +1,35 @@
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
+info: latest update on 2025-02-20, rust version 1.85.0 (4d91de4e4 2025-02-17)
+info: syncing channel updates for 'stable-x86_64-unknown-linux-gnu'
