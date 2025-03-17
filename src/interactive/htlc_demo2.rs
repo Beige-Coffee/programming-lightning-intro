@@ -105,7 +105,7 @@ pub async fn run(funding_txid: String) {
 
 pub fn sign_transaction(tx: Transaction)-> Transaction {
 
-    let funding_amount = 400_000;
+    let funding_amount = 405_000;
     let txid_index = 0;
     
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
@@ -162,7 +162,7 @@ pub fn sign_transaction(tx: Transaction)-> Transaction {
 
 fn build_p2wpkh_tx(txin: TxIn, pubkey: PublicKey) -> Transaction {
     let output_script = p2wpkh_output_script(pubkey);
-    let output = build_output(400_000, output_script);
+    let output = build_output(405_000, output_script);
     
     let version = Version::TWO;
     let locktime = LockTime::from_consensus(200);

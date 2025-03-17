@@ -19,10 +19,10 @@ pub fn two_of_two_multisig_witness_script(
 ) -> ScriptBuf {
     
     Builder::new()
-        .push_int(2)
+        .push_opcode(opcodes::OP_PUSHNUM_2)
         .push_key(pubkey1)
         .push_key(pubkey2)
-        .push_int(2)
+        .push_opcode(opcodes::OP_PUSHNUM_2)
         .push_opcode(opcodes::OP_CHECKMULTISIG)
         .into_script()
 }

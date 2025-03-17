@@ -17,7 +17,7 @@ if [[ "$already_running" =~ "blocks" ]]; then
   echo "bitcoind already running."
 else
   echo "Starting bitcoind..."
-  bitcoind -regtest -conf=$(pwd)/bitcoin.conf -datadir=$BITCOIN_DATA_DIR &
+  bitcoind -regtest -conf=$(pwd)/bitcoin.conf -datadir=$BITCOIN_DATA_DIR -reindex &
   sleep 5
 fi
 

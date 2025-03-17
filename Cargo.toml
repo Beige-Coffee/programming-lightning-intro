@@ -20,6 +20,7 @@ reqwest = { version = "0.11", features = ["json", "blocking", "rustls-tls"] }
 hex = "0.4.3"
 sha2 = "0.10.8"
 clap = { version = "4.4", features = ["derive"] }
+ripemd = "0.1"
 
 [build-dependencies]
 syn = { version = "1.0.107", features = ["parsing", "full","extra-traits"] }
