@@ -1,12 +1,12 @@
-#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use, non_snake_case)]
 use crate::internal;
 use bitcoin::script::ScriptBuf;
 use internal::builder::Builder;
-use internal::helper::{tweak_pubkey, hash_pubkeys,
-                      build_output, build_transaction, p2wpkh_output_script,
-                      build_htlc_offerer_witness_script, add_pubkeys};
+use internal::helper::{pubkey_multipication_tweak, hash_pubkeys,
+                      build_output, build_transaction, p2wpkh_output_script,privkey_multipication_tweak,
+                      build_htlc_offerer_witness_script, add_pubkeys,pubkey_from_secret, add_privkeys};
 use bitcoin::blockdata::opcodes::all as opcodes;
-use bitcoin::secp256k1::PublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::hashes::Hash;
 use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, Witness};
@@ -101,14 +101,31 @@ pub fn generate_revocation_pubkey(
         hash_pubkeys(per_commitment_point, countersignatory_basepoint);
 
     let countersignatory_contrib =
-        tweak_pubkey(countersignatory_basepoint, rev_append_commit_hash_key);
+        pubkey_multipication_tweak(countersignatory_basepoint, rev_append_commit_hash_key);
 
     let broadcaster_contrib =
-        tweak_pubkey(per_commitment_point, commit_append_rev_hash_key);
+        pubkey_multipication_tweak(per_commitment_point, commit_append_rev_hash_key);
 
     let revocation_pubkey = add_pubkeys(countersignatory_contrib, broadcaster_contrib);
 
     revocation_pubkey
+}
+
+pub fn generate_revocation_privkey(per_commitment_secret: SecretKey, countersignatory_revocation_base_secret: SecretKey) -> SecretKey {
+
+    let R = pubkey_from_secret(countersignatory_revocation_base_secret);
+
+    let P = pubkey_from_secret(per_commitment_secret);
+
+    let h1 = hash_pubkeys(R, P);
+
+    let h2 = hash_pubkeys(P, R);
+
+    let key1 = privkey_multipication_tweak(countersignatory_revocation_base_secret, h1);
+
+    let key2 = privkey_multipication_tweak(per_commitment_secret, h2);
+
+    add_privkeys(key1, key2)
 }
 
 pub fn to_local(

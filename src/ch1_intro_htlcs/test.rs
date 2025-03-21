@@ -1,14 +1,14 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::ch1_intro_htlcs::exercises::{
     build_commitment_transaction, build_funding_transaction, build_htlc_commitment_transaction,
-    build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_pubkey, to_local, two_of_two_multisig_witness_script,
+    build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_pubkey, to_local, two_of_two_multisig_witness_script,generate_revocation_privkey
 };
 use crate::internal::helper::{
     bitcoin_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key,
 };
 use bitcoin::hash_types::Txid;
 use bitcoin::script::ScriptBuf;
-use bitcoin::secp256k1::PublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::secp256k1::{self, Secp256k1};
 use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, Witness};
@@ -114,9 +114,38 @@ fn test_generate_revocation_pubkey() {
     let revocation_pubkey =
         generate_revocation_pubkey(countersignatory_basepoint, per_commitment_point);
 
+    let key_str = "0c8415f91d9df28009f87442dfc897d3c22a534032d4795467206db994a3c539";
+    let key_bytes = hex::decode(key_str).expect("Invalid hex string");
+    let key = SecretKey::from_slice(&key_bytes).expect("Invalid 32-byte private key");
+    let secp = Secp256k1::new();
+    let derived_pubkey = PublicKey::from_secret_key(&secp, &key);
+
     let actual = revocation_pubkey.to_string();
 
     let expected = "02f406b2b2ef2372c08d003e5062e4b34929b86f107a36bfbd406f5644419e9ff6";
+
+    assert_eq!(
+        actual, expected,
+        "Revocation pubkey doesn't match expected value"
+    );
+
+    assert_eq!(
+        derived_pubkey, revocation_pubkey,
+        "Secret does not work for pubkey"
+    );
+}
+
+#[test]
+fn teset_generate_revocation_privkey() {
+    let countersignatory_secret = secp256k1_private_key(&[0x01; 32]);
+    let per_commitment_secret = secp256k1_private_key(&[0x02; 32]);
+
+    let revocation_privkey =
+        generate_revocation_privkey(countersignatory_secret, per_commitment_secret);
+
+    let actual = revocation_privkey.display_secret().to_string();
+
+    let expected = "0c8415f91d9df28009f87442dfc897d3c22a534032d4795467206db994a3c539";
 
     assert_eq!(
         actual, expected,

@@ -4,9 +4,8 @@ use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::hashes::HashEngine;
 use bitcoin::secp256k1;
-use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::secp256k1::PublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::script::{ScriptBuf};
 use bitcoin::{Block, OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
@@ -18,9 +17,15 @@ use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::{PubkeyHash, WPubkeyHash};
 
 
-pub fn tweak_pubkey(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
+pub fn pubkey_multipication_tweak(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
     let secp = Secp256k1::new();
     pubkey1.mul_tweak(&secp, &Scalar::from_be_bytes(sha_bytes).unwrap())
+    .expect("Multiplying a valid public key by a hash is expected to never fail per secp256k1 docs")
+}
+
+pub fn privkey_multipication_tweak(secret: SecretKey, sha_bytes: [u8; 32]) -> SecretKey {
+    let secp = Secp256k1::new();
+    secret.mul_tweak(&Scalar::from_be_bytes(sha_bytes).unwrap())
     .expect("Multiplying a valid public key by a hash is expected to never fail per secp256k1 docs")
 }
 
@@ -40,10 +45,20 @@ pub fn add_pubkeys(key1: PublicKey, key2: PublicKey) -> PublicKey {
     pk
 }
 
+pub fn add_privkeys(key1: SecretKey, key2: SecretKey) -> SecretKey {
+    key1.add_tweak(&Scalar::from_be_bytes(key2.secret_bytes()).unwrap())
+        .expect("Addition won't fail due to hash commitment.")
+}
+
 pub fn secp256k1_private_key(private_key_bytes: &[u8; 32]) -> secp256k1::SecretKey {
     let secp = Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(private_key_bytes).unwrap();
     secret_key
+}
+
+pub fn pubkey_from_secret(secret: SecretKey) -> PublicKey {
+    let secp = Secp256k1::new();
+    secp256k1::PublicKey::from_secret_key(&secp, &secret)
 }
 
 pub fn pubkey_from_private_key(private_key: &[u8; 32]) -> PublicKey {

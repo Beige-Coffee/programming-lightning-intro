@@ -63,6 +63,11 @@ impl Builder {
         self
     }
 
+    pub fn push_key2(mut self, key: &BitcoinPublicKey) -> Self {
+        self.inner = self.inner.push_key(key);
+        self
+    }
+
     pub fn into_script(self) -> ScriptBuf {
         self.inner.into_script()
     }

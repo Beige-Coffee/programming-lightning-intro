@@ -36,7 +36,7 @@ use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use internal::bitcoind_client;
 use internal::bitcoind_client::BitcoindClient;
-use ch1_intro_htlcs::solutions::build_funding_transaction;
+use ch1_intro_htlcs::exercises::build_funding_transaction;
 use internal::helper::{pubkey_from_private_key, bitcoin_pubkey_from_private_key, secp256k1_private_key};
 use internal::convert;
 use internal::convert::{BlockchainInfo, ListUnspentUtxo, SignedTx};

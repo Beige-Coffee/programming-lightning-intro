@@ -68,7 +68,7 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
                                         txid: String,
                                         funding_amount: u64) {
 
-    let txid_index = 0;
+    let txid_index = 2;
     let txin = get_htlc_funding_input(txid.to_string(), txid_index);
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
 
@@ -106,7 +106,7 @@ pub async fn run(funding_txid: String) {
 pub fn sign_transaction(tx: Transaction)-> Transaction {
 
     let funding_amount = 405_000;
-    let txid_index = 0;
+    let txid_index = 2;
     
     let our_public_key = pubkey_from_private_key(&[0x01; 32]);
     let our_private_key = secp256k1_private_key(&[0x01; 32]);
@@ -165,7 +165,7 @@ fn build_p2wpkh_tx(txin: TxIn, pubkey: PublicKey) -> Transaction {
     let output = build_output(405_000, output_script);
     
     let version = Version::TWO;
-    let locktime = LockTime::from_consensus(200);
+    let locktime = LockTime::ZERO;
 
     let tx = build_transaction(version,
                       locktime,
