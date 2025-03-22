@@ -27,19 +27,6 @@ pub fn two_of_two_multisig_witness_script(
         .into_script()
 }
 
-pub fn timelocked_p2pkh(pubkey: &PublicKey, blocks_or_seconds: i64) -> ScriptBuf {
-    Builder::new()
-        .push_int(blocks_or_seconds)
-        .push_opcode(opcodes::OP_CSV)
-        .push_opcode(opcodes::OP_DROP)
-        .push_opcode(opcodes::OP_DUP)
-        .push_opcode(opcodes::OP_HASH160)
-        .push_pubkey_hash(pubkey)
-        .push_opcode(opcodes::OP_EQUALVERIFY)
-        .push_opcode(opcodes::OP_CHECKSIG)
-        .into_script()
-}
-
 pub fn build_funding_transaction(
     txins: Vec<TxIn>,
     alice_pubkey: &PublicKey,

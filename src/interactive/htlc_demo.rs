@@ -81,7 +81,7 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     let remote_output_script = p2wpkh_output_script(counterparty_public_key);
 
     let local_output = build_output(3_594_500, local_output_script.to_p2wsh());
-    let remote_output = build_output(1_000_000, remote_output_script);
+    let remote_output = build_output(1_000_500, remote_output_script);
 
     // build funding transaction using the function we created
     let output_script = build_hash_locked_script(&our_public_key,
