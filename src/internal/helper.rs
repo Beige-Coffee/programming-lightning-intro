@@ -19,14 +19,11 @@ use bitcoin::{PubkeyHash, WPubkeyHash};
 
 pub fn pubkey_multipication_tweak(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
     let secp = Secp256k1::new();
-    pubkey1.mul_tweak(&secp, &Scalar::from_be_bytes(sha_bytes).unwrap())
-    .expect("Multiplying a valid public key by a hash is expected to never fail per secp256k1 docs")
+    pubkey1.mul_tweak(&secp, &Scalar::from_be_bytes(sha_bytes).unwrap()).unwrap()
 }
 
 pub fn privkey_multipication_tweak(secret: SecretKey, sha_bytes: [u8; 32]) -> SecretKey {
-    let secp = Secp256k1::new();
-    secret.mul_tweak(&Scalar::from_be_bytes(sha_bytes).unwrap())
-    .expect("Multiplying a valid public key by a hash is expected to never fail per secp256k1 docs")
+    secret.mul_tweak(&Scalar::from_be_bytes(sha_bytes).unwrap()).unwrap()
 }
 
 pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
@@ -39,15 +36,14 @@ pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
 }
 
 pub fn add_pubkeys(key1: PublicKey, key2: PublicKey) -> PublicKey {
-    let pk = key1.combine(&key2)
-        .expect("Addition only fails if the tweak is the inverse of the key. This is not possible when the tweak commits to the key.");
+    let pk = key1.combine(&key2).unwrap();
 
     pk
 }
 
 pub fn add_privkeys(key1: SecretKey, key2: SecretKey) -> SecretKey {
-    key1.add_tweak(&Scalar::from_be_bytes(key2.secret_bytes()).unwrap())
-        .expect("Addition won't fail due to hash commitment.")
+    let tweak = Scalar::from_be_bytes(key2.secret_bytes()).unwrap();
+    key1.add_tweak(&tweak).unwrap()
 }
 
 pub fn secp256k1_private_key(private_key_bytes: &[u8; 32]) -> secp256k1::SecretKey {
