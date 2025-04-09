@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use crate::ch1_intro_htlcs::bonus::revocation_keys::{SimpleNodeKeys};
+use crate::ch1_intro_htlcs::bonus::revocation_keys::{NodeKeysManager};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::PublicKey;
@@ -10,7 +10,7 @@ use crate::ch1_intro_htlcs::exercises::{
 
 pub fn revocation_pubkey(
   countersignatory_basepoint: PublicKey,
-  keys_manager: SimpleNodeKeys,
+  keys_manager: NodeKeysManager,
   secp_ctx: &Secp256k1<secp256k1::All>,
   channel_params: &[u8; 32]) -> PublicKey {
 

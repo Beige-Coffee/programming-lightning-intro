@@ -8,6 +8,7 @@ use bitcoin::secp256k1::PublicKey;
 use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::SecretKey;
+use serde::ser::Serialize;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NodeKeysManager {
@@ -93,6 +94,14 @@ impl NodeKeysManager {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Basepoint {
+    Revocation,
+    Payment,
+    DelayedPayment,
+    HTLC,
+}
+
 /// Build the commitment secret from the seed and the commitment number
 impl ChannelKeysManager {
     pub fn build_commitment_secret(&self, idx: u64) -> [u8; 32] {
@@ -105,6 +114,41 @@ impl ChannelKeysManager {
             }
         }
         res
+    }
+
+    pub fn derive_private_key(
+        &self,
+        basepoint_type: Basepoint,
+        commitment_index: u64,
+        secp_ctx: &Secp256k1<secp256k1::All>,
+    ) -> SecretKey {
+        
+        // First, get the appropriate base key based on the basepoint type
+        let basepoint_secret = match basepoint_type {
+            Basepoint::Payment => &self.payment_key,
+            Basepoint::DelayedPayment => &self.delayed_payment_base_key,
+            Basepoint::HTLC => &self.htlc_base_key,
+            Basepoint::Revocation => &self.revocation_base_key,
+        };
+
+        // Second, convert basepoint to public key
+        let basepoint = PublicKey::from_secret_key(&secp_ctx, &basepoint_secret);
+
+        // Third, get per-commitment-point with index
+        let per_commitment_secret = self.build_commitment_secret(commitment_index);
+        let per_commitment_privkey = SecretKey::from_slice(&per_commitment_secret).unwrap();
+        let per_commitment_point = PublicKey::from_secret_key(secp_ctx, &per_commitment_privkey);
+
+        // Forth, create scalar tweak
+        let mut sha = Sha256::engine();
+        sha.input(&per_commitment_point.serialize());
+        sha.input(&basepoint.serialize());
+        let res = Sha256::from_engine(sha).to_byte_array();
+        let scalar = Scalar::from_be_bytes(res).unwrap();
+
+        // Finally, add scalar
+        basepoint_secret.add_tweak(&scalar).expect("works")
+        
     }
 }
 
