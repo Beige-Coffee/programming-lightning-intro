@@ -1,5 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::internal;
+use crate::interactive;
+use crate::exercises;
 use internal::bitcoind_client::BitcoindClient;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
@@ -26,6 +28,7 @@ use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::secp256k1::Message;
 use bitcoin::sighash::EcdsaSighashType;
 use bitcoin::sighash::SighashCache;
+use exercises::exercises::{ two_of_two_multisig_witness_script};
 
 pub async fn get_bitcoind_client() -> BitcoindClient {
   let bitcoind = BitcoindClient::new(
@@ -314,4 +317,68 @@ pub fn build_htlc_offerer_witness_script(
         .push_opcode(opcodes::OP_ENDIF)
         .push_opcode(opcodes::OP_ENDIF)
         .into_script()
+}
+
+pub fn sign_funding_transaction(tx: Transaction,
+                                our_funding_public_key: PublicKey,
+                                our_funding_private_key: SecretKey,
+                                counterparty_funding_public_key: PublicKey,
+                                counterparty_funding_private_key: SecretKey,
+                               )-> Transaction {
+
+    let funding_amount = 5_000_000;
+    let txid_index = 0;
+
+    // Prepare the redeem script for signing (e.g., P2PKH or P2WPKH)
+    let redeem_script =
+        two_of_two_multisig_witness_script(
+            &our_funding_public_key,
+            &counterparty_funding_public_key);
+
+    let our_signature = generate_p2wsh_signature(
+         tx.clone(), 
+         txid_index,
+         &redeem_script,
+         funding_amount,
+         EcdsaSighashType::All,
+        our_funding_private_key);
+
+    let counterparty_signature = generate_p2wsh_signature(
+         tx.clone(), 
+         txid_index,
+         &redeem_script,
+         funding_amount,
+         EcdsaSighashType::All,
+    counterparty_funding_private_key);
+
+    // Convert signature to DER and append SigHashType
+    let mut our_signature_der = our_signature.serialize_der().to_vec();
+    our_signature_der.push(EcdsaSighashType::All as u8);
+
+    let mut counterparty_signature_der = counterparty_signature.serialize_der().to_vec();
+    counterparty_signature_der.push(EcdsaSighashType::All as u8);
+
+    // Determine signature order based on pubkey comparison
+    let our_sig_first = our_funding_public_key.serialize()[..] > counterparty_funding_public_key.serialize()[..];
+
+    // Add the signature and public key to the witness
+    let mut signed_tx = tx.clone();
+
+    // First push empty element for NULLDUMMY compliance
+    signed_tx.input[0].witness.push(Vec::new());
+
+    // Push signatures in correct order
+    if our_sig_first {
+        signed_tx.input[0].witness.push(our_signature_der);
+        signed_tx.input[0].witness.push(counterparty_signature_der);
+    } else {
+        signed_tx.input[0].witness.push(counterparty_signature_der);
+        signed_tx.input[0].witness.push(our_signature_der);
+    }
+
+    signed_tx.input[0]
+        .witness
+        .push(redeem_script.clone().into_bytes());
+
+    signed_tx
 }

@@ -1,6 +1,6 @@
-# run = "cargo test --lib exercises::"
+run = "cargo test --lib exercises::"
 # change `run` to the below to run appendix tests
-run = "cargo test --lib exercises_appendix::"
+# run = "cargo test --lib exercises_appendix::"
 
 hidden = [
   "target",
