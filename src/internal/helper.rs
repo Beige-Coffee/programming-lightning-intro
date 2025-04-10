@@ -1,6 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use crate::internal;
-use crate::interactive;
 use crate::exercises;
 use internal::bitcoind_client::BitcoindClient;
 use bitcoin::hashes::sha256::Hash as Sha256;
@@ -11,13 +10,13 @@ use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::script::{ScriptBuf};
-use bitcoin::{Block, OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::{OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::amount::Amount;
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
 use internal::builder::Builder;
 use bitcoin::blockdata::opcodes::all as opcodes;
-use bitcoin::{PubkeyHash, WPubkeyHash};
+use bitcoin::{PubkeyHash};
 use bitcoin::{Network};
 use bitcoin::consensus::encode::serialize_hex;
 use internal::hex_utils;

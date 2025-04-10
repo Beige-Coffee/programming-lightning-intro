@@ -1,25 +1,20 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use bitcoin::hash_types::{BlockHash, Txid};
-use bitcoin::hashes::Hash;
+use bitcoin::hash_types::{BlockHash};
 use bitcoin::{Network };
 use lightning_block_sync::http::HttpEndpoint;
 use lightning_block_sync::rpc::RpcClient;
-use lightning_block_sync::http::JsonResponse;
-use bitcoin::{PublicKey, PrivateKey};
 use bitcoin::secp256k1::PublicKey as Secp256k1PublicKey;
 use bitcoin::address::Address;
-use bitcoin::consensus::encode::serialize_hex;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use serde_json;
 use std::str::FromStr;
 use bitcoin::blockdata::transaction::Transaction;
 use std::sync::Arc;
-use bitcoin::consensus::{encode, Decodable, Encodable};
+use bitcoin::consensus::{encode};
 use crate::internal::convert::{
     ListUnspentResponse, NewAddress, SignedTx, BlockchainInfo, AddressPubkey, MempoolInfo
 };
-use lightning::chain::chaininterface::{BroadcasterInterface, ConfirmationTarget, FeeEstimator};
-use tokio::runtime::Handle;
+use lightning::chain::chaininterface::{BroadcasterInterface};
 
 #[derive(Clone)]
 pub struct BitcoindClient {
