@@ -1,8 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use base64;
-use crate::interactive::helper;
 use crate::internal;
-use crate::ch1_intro_htlcs;
+use crate::exercises;
 use bitcoin::address::Address;
 use bitcoin::amount::Amount;
 use bitcoin::blockdata::block::Block;
@@ -38,7 +37,7 @@ use lightning_block_sync::poll::ChainTip;
 use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
-use ch1_intro_htlcs::exercises::{
+use exercises::exercises::{
     build_htlc_commitment_transaction, build_commitment_transaction, two_of_two_multisig_witness_script, build_refund_transaction
 };
 use bitcoin::PublicKey as BitcoinPubKey;
@@ -47,7 +46,7 @@ use internal::bitcoind_client::BitcoindClient;
 use internal::convert;
 use internal::convert::BlockchainInfo;
 use internal::hex_utils;
-use internal::helper::{pubkey_from_private_key, secp256k1_private_key};
+use internal::helper::{pubkey_from_private_key, secp256k1_private_key, get_bitcoind_client, get_unspent_output, sign_raw_transaction, generate_p2wsh_signature, get_funding_input, get_arg};
 use serde_json;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -56,7 +55,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use hex;
-use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, generate_p2wsh_signature, get_funding_input, get_arg};
 
 
 pub struct KeyManager{

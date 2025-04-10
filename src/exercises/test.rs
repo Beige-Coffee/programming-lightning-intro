@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use crate::ch1_intro_htlcs::exercises::{
+use crate::exercises::exercises::{
     build_commitment_transaction, build_funding_transaction, build_htlc_commitment_transaction,
     build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_pubkey, to_local, two_of_two_multisig_witness_script,generate_revocation_privkey
 };

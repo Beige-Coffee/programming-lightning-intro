@@ -1,9 +1,8 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 use base64;
-use crate::interactive::helper;
 use internal::builder::Builder;
 use crate::internal;
-use crate::ch1_intro_htlcs;
+use crate::exercises;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::address::Address;
 use bitcoin::amount::Amount;
@@ -40,7 +39,7 @@ use lightning_block_sync::poll::ChainTip;
 use lightning_block_sync::rpc::RpcClient;
 use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
-use ch1_intro_htlcs::solutions::{
+use exercises::solutions::{
     build_htlc_commitment_transaction, build_commitment_transaction, two_of_two_multisig_witness_script, build_refund_transaction
 };
 use bitcoin::PublicKey as BitcoinPubKey;
@@ -60,8 +59,7 @@ use tokio::time::sleep;
 use hex;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
 use internal::helper::{pubkey_from_private_key, secp256k1_private_key,
-                      p2wpkh_output_script, build_output, build_transaction};
-use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction, generate_p2wsh_signature, get_htlc_funding_input, get_arg};
+                      p2wpkh_output_script, build_output, build_transaction, get_bitcoind_client, get_unspent_output, sign_raw_transaction, generate_p2wsh_signature, get_htlc_funding_input, get_arg};
 
 
 pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,

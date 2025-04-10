@@ -1,7 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use crate::interactive::helper;
 use crate::internal;
-use crate::ch1_intro_htlcs;
+use crate::exercises;
 use base64;
 use internal::builder::Builder;
 use bitcoin::address::Address;
@@ -39,8 +38,8 @@ use lightning_block_sync::SpvClient;
 use lightning_block_sync::{AsyncBlockSourceResult, BlockData, BlockHeaderData, BlockSource};
 use internal::bitcoind_client;
 use internal::bitcoind_client::BitcoindClient;
-use ch1_intro_htlcs::solutions::{build_funding_transaction, to_local};
-use internal::helper::{pubkey_from_private_key, build_output, build_transaction, bitcoin_pubkey_from_private_key, secp256k1_private_key, p2wpkh_output_script};
+use exercises::solutions::{build_funding_transaction, to_local};
+use internal::helper::{pubkey_from_private_key, build_output, build_transaction, bitcoin_pubkey_from_private_key, secp256k1_private_key, p2wpkh_output_script, get_bitcoind_client, get_unspent_output, sign_raw_transaction};
 use internal::convert;
 use internal::convert::{BlockchainInfo, ListUnspentUtxo, SignedTx};
 use internal::hex_utils;
@@ -52,7 +51,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use bitcoin::secp256k1::PublicKey;
-use helper::{get_bitcoind_client, get_unspent_output, sign_raw_transaction};
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
 
 pub async fn build_funding_tx(bitcoind: BitcoindClient,

@@ -6,7 +6,6 @@ use bitcoin::locktime::absolute::LockTime;
 use bitcoin::script::ScriptBuf;
 use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::transaction::Version;
-use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, Witness};
 use internal::builder::Builder;
 use internal::helper::{

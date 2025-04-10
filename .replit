@@ -1,4 +1,7 @@
-run = "cargo test --lib ch1_intro_htlcs"
+# run = "cargo test --lib exercises::"
+# change `run` to the below to run appendix tests
+run = "cargo test --lib exercises_appendix::"
+
 hidden = [
   "target",
   ".tutorial",
@@ -15,7 +18,7 @@ hidden = [
   "Cargo.toml",
   "Cargo.lock",
 ]
-entrypoint = "src/ch1_intro_htlcs/exercises.rs"
+entrypoint = "src/exercises/exercises.rs"
 onBoot = ["bash", "start.sh"]
 
 [packager]

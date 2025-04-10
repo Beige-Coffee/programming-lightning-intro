@@ -9,6 +9,9 @@ use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::SecretKey;
 use serde::ser::Serialize;
+use crate::exercises::exercises::{
+  generate_revocation_pubkey
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NodeKeysManager {
@@ -150,6 +153,24 @@ impl ChannelKeysManager {
         basepoint_secret.add_tweak(&scalar).expect("works")
         
     }
+
+    pub fn derive_revocation_public_key(
+        &self,
+        countersignatory_basepoint: PublicKey,
+        commitment_index: u64,
+        secp_ctx: &Secp256k1<secp256k1::All>) -> PublicKey {
+        
+        let per_commitment_secret = self.build_commitment_secret(commitment_index);
+        
+        let per_commitment_private_key = SecretKey::from_slice(&per_commitment_secret).unwrap();
+        
+        let per_commitment_point = PublicKey::from_secret_key(secp_ctx, &per_commitment_private_key);
+        
+        let revocation_pubkey = generate_revocation_pubkey(countersignatory_basepoint, per_commitment_point);
+        
+        revocation_pubkey
+
+      }
 }
 
 fn key_step_derivation(seed: &[u8; 32], bytes: &[u8], previous_key: &[u8]) -> SecretKey {
