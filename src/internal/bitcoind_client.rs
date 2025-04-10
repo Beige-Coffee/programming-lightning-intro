@@ -51,17 +51,6 @@ impl BlockSource for BitcoindClient {
 const MIN_FEERATE: u32 = 253;
 
 impl BitcoindClient {
-    pub async fn create() -> Self {
-        BitcoindClient::new(
-            "0.0.0.0".to_string(),
-            18443,
-            "bitcoind".to_string(),
-            "bitcoind".to_string(),
-            Network::Regtest,
-        )
-        .await
-        .unwrap()
-    }
     pub async fn new(
         host: String, port: u16, rpc_user: String, rpc_password: String, network: Network,
     ) -> std::io::Result<Self> {
