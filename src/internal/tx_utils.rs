@@ -26,17 +26,27 @@ pub fn build_transaction(
     }
 }
 
+use bitcoin::Witness;
+
 pub fn get_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
-    let mut tx_id_bytes = hex::decode(input_tx_id_str).expect("Valid hex string");
+    build_unsigned_input(input_tx_id_str, vout as u32, Sequence::MAX)
+}
+
+pub fn get_htlc_funding_input(input_tx_id_str: String, vout: usize) -> TxIn {
+    build_unsigned_input(input_tx_id_str, vout as u32, Sequence(0))
+}
+
+pub fn build_unsigned_input(txid: String, vout: u32, sequence: Sequence) -> TxIn {
+    let mut tx_id_bytes = hex::decode(txid).expect("Valid hex string");
     tx_id_bytes.reverse();
-    let input_txid = Txid::from_byte_array(tx_id_bytes.try_into().expect("Expected 32 bytes"));
+    let input_txid = Txid::new(tx_id_bytes.try_into().expect("Expected 32 bytes"));
 
     TxIn {
         previous_output: OutPoint {
             txid: input_txid,
-            vout: vout as u32,
+            vout,
         },
-        sequence: Sequence::MAX,
+        sequence,
         script_sig: ScriptBuf::new(),
         witness: Witness::new(),
     }
