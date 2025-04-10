@@ -1,7 +1,33 @@
-
-use bitcoin::secp256k1::{PublicKey, SecretKey, Scalar};
-use bitcoin::PublicKey as BitcoinPublicKey;
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+use crate::internal;
+use crate::exercises;
+use internal::bitcoind_client::BitcoindClient;
+use bitcoin::hashes::sha256::Hash as Sha256;
+use bitcoin::hashes::Hash;
+use bitcoin::hashes::HashEngine;
+use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
+use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
+use bitcoin::PublicKey as BitcoinPublicKey;
+use bitcoin::script::{ScriptBuf};
+use bitcoin::{OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::amount::Amount;
+use bitcoin::transaction::Version;
+use bitcoin::locktime::absolute::LockTime;
+use internal::builder::Builder;
+use bitcoin::blockdata::opcodes::all as opcodes;
+use bitcoin::{PubkeyHash};
+use bitcoin::{Network};
+use bitcoin::consensus::encode::serialize_hex;
+use internal::hex_utils;
+use bitcoin::consensus::{encode};
+use bitcoin::hash_types::Txid;
+use std::env;
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::Message;
+use bitcoin::sighash::EcdsaSighashType;
+use bitcoin::sighash::SighashCache;
+use exercises::exercises::{ two_of_two_multisig_witness_script};
 
 pub fn secp256k1_private_key(private_key_bytes: &[u8; 32]) -> SecretKey {
     let secp = Secp256k1::new();
@@ -33,4 +59,24 @@ pub fn pubkey_multipication_tweak(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> Pu
 
 pub fn privkey_multipication_tweak(secret: SecretKey, sha_bytes: [u8; 32]) -> SecretKey {
     secret.mul_tweak(&Scalar::from_be_bytes(sha_bytes).unwrap()).unwrap()
+}
+
+pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
+    let mut sha = Sha256::engine();
+
+    sha.input(&key1.serialize());
+    sha.input(&key2.serialize());
+
+    Sha256::from_engine(sha).to_byte_array()
+}
+
+pub fn add_pubkeys(key1: PublicKey, key2: PublicKey) -> PublicKey {
+    let pk = key1.combine(&key2).unwrap();
+
+    pk
+}
+
+pub fn add_privkeys(key1: SecretKey, key2: SecretKey) -> SecretKey {
+    let tweak = Scalar::from_be_bytes(key2.secret_bytes()).unwrap();
+    key1.add_tweak(&tweak).unwrap()
 }

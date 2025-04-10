@@ -144,3 +144,17 @@ impl BroadcasterInterface for BitcoindClient {
         });
     }
 }
+
+pub async fn get_bitcoind_client() -> BitcoindClient {
+  let bitcoind = BitcoindClient::new(
+      "0.0.0.0".to_string(),
+      18443,
+      "bitcoind".to_string(),
+      "bitcoind".to_string(),
+      Network::Regtest,
+  )
+  .await
+  .unwrap();
+
+  bitcoind
+}
