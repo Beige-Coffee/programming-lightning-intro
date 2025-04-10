@@ -1,11 +1,12 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+use crate::internal;
 use crate::exercises::exercises::{
     build_commitment_transaction, build_funding_transaction, build_htlc_commitment_transaction,
     build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_pubkey, to_local, two_of_two_multisig_witness_script,generate_revocation_privkey
 };
-use crate::internal::helper::{
-    bitcoin_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key,
-};
+use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_private_key, secp256k1_private_key, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
+use internal::tx_utils::{build_output, build_transaction};
+use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use bitcoin::hash_types::Txid;
 use bitcoin::script::ScriptBuf;
 use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};

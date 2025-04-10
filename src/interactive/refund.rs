@@ -5,8 +5,12 @@ use bitcoin::consensus::encode::serialize_hex;
 use bitcoin::secp256k1::{PublicKey, SecretKey};
 use lightning::chain::chaininterface::{BroadcasterInterface,};
 use exercises::exercises::{build_refund_transaction, };
-use internal::bitcoind_client::BitcoindClient;
-use internal::helper::{pubkey_from_private_key, secp256k1_private_key, get_bitcoind_client, get_unspent_output, generate_p2wsh_signature, sign_raw_transaction, get_funding_input, sign_funding_transaction};
+use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
+use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
+      pubkey_from_private_key, secp256k1_private_key, bitcoin_pubkey_from_private_key};
+use internal::tx_utils::{build_output,get_unspent_output, build_transaction, get_funding_input, get_htlc_funding_input};
+use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
+use internal::sign_utils::{sign_raw_transaction, sign_funding_transaction, generate_p2wsh_signature};
 use std::time::Duration;
 use tokio::time::sleep;
 

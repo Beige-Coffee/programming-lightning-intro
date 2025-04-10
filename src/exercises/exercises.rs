@@ -8,10 +8,9 @@ use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::transaction::Version;
 use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, Witness};
 use internal::builder::Builder;
-use internal::helper::{
-    add_pubkeys, build_htlc_offerer_witness_script, build_output, build_transaction, hash_pubkeys,
-    p2wpkh_output_script, pubkey_multipication_tweak,pubkey_from_secret, add_privkeys,privkey_multipication_tweak
-};
+use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
+use internal::tx_utils::{build_output, build_transaction};
+use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::HashEngine;
 

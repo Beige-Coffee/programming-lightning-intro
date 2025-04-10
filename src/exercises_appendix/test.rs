@@ -1,12 +1,13 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+use crate::internal;
 use crate::exercises_appendix::exercises::{NodeKeysManager, Basepoint};
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::PublicKey;
 use bitcoin::secp256k1::SecretKey;
-use crate::internal::helper::{
-    bitcoin_pubkey_from_private_key, pubkey_from_private_key, secp256k1_private_key,
-};
+use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, pubkey_from_private_key, privkey_multipication_tweak, hash_pubkeys};
+use internal::tx_utils::{build_output, build_transaction};
+use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 
 #[test]
 fn test_node_keys_manager() {

@@ -2,9 +2,9 @@
 use crate::internal;
 use bitcoin::script::ScriptBuf;
 use internal::builder::Builder;
-use internal::helper::{pubkey_multipication_tweak, hash_pubkeys,
-                      build_output, build_transaction, p2wpkh_output_script,privkey_multipication_tweak,
-                      build_htlc_offerer_witness_script, add_pubkeys,pubkey_from_secret, add_privkeys};
+use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
+use internal::tx_utils::{build_output, build_transaction};
+use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::PublicKey as BitcoinPublicKey;
