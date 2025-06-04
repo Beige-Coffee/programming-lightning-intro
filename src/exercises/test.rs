@@ -1,18 +1,22 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use crate::internal;
 use crate::exercises::exercises::{
     build_commitment_transaction, build_funding_transaction, build_htlc_commitment_transaction,
-    build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_pubkey, to_local, two_of_two_multisig_witness_script,generate_revocation_privkey
+    build_htlc_timeout_transaction, build_refund_transaction, generate_revocation_privkey,
+    generate_revocation_pubkey, to_local, two_of_two_multisig_witness_script,
 };
-use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_private_key, secp256k1_private_key, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
-use internal::tx_utils::{build_output, build_transaction};
-use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
+use crate::internal;
 use bitcoin::hash_types::Txid;
 use bitcoin::script::ScriptBuf;
-use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::secp256k1::{self, Secp256k1};
+use bitcoin::secp256k1::{PublicKey, Scalar, SecretKey};
 use bitcoin::PublicKey as BitcoinPublicKey;
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, Witness};
+use internal::key_utils::{
+    add_privkeys, add_pubkeys, hash_pubkeys, privkey_multipication_tweak, pubkey_from_private_key,
+    pubkey_from_secret, pubkey_multipication_tweak, secp256k1_private_key,
+};
+use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
+use internal::tx_utils::{build_output, build_transaction};
 
 /// hash160 of the empty string
 const HASH160_DUMMY: [u8; 20] = [
@@ -137,7 +141,7 @@ fn test_generate_revocation_pubkey() {
 }
 
 #[test]
-fn teset_generate_revocation_privkey() {
+fn test_generate_revocation_privkey() {
     let countersignatory_secret = secp256k1_private_key(&[0x01; 32]);
     let per_commitment_secret = secp256k1_private_key(&[0x02; 32]);
 
