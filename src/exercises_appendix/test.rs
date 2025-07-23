@@ -31,7 +31,7 @@ fn test_derive_channel_keys() {
     let seed = &[0x02; 32];
     let keys_manager = NodeKeysManager::new(*seed);
     let secp_ctx = &Secp256k1::new();
-    let channel_id = &[0x05; 32];
+    let channel_id: u32 = 1;
 
     let channel_keys_manager = keys_manager.derive_channel_keys(channel_id);
 
@@ -53,7 +53,7 @@ fn test_derive_private_key() {
     let seed = &[0x02; 32];
     let keys_manager = NodeKeysManager::new(*seed);
     let secp_ctx = &Secp256k1::new();
-    let channel_id = &[0x05; 32];
+    let channel_id: u32 = 1;
     let commitment_idx = 5;
 
     let channel_keys_manager = keys_manager.derive_channel_keys(channel_id);
@@ -80,7 +80,7 @@ fn test_derive_revocation_public_key() {
     let keys_manager = NodeKeysManager::new(*seed);
     let secp_ctx = &Secp256k1::new();
     let commitment_idx = 5;
-    let channel_id = &[0x05; 32];
+    let channel_id: u32 = 1;
 
     let channel_keys_manager = keys_manager.derive_channel_keys(channel_id);
 

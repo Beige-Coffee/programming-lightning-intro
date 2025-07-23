@@ -16,9 +16,10 @@ use crate::exercises::exercises::{
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NodeKeysManager {
     pub secp_ctx: Secp256k1<secp256k1::All>,
-    pub channel_master_key: Xpriv,
     pub node_secret: SecretKey,
     pub node_id: PublicKey,
+    pub shutdown_pubkey: PublicKey,
+    pub channel_master_key: Xpriv,
     pub seed: [u8; 32],
 }
 
@@ -43,21 +44,28 @@ impl NodeKeysManager {
             .private_key;
         let node_id = PublicKey::from_secret_key(&secp_ctx, &node_secret);
 
-        let channel_master_key = get_hardened_extended_child_private_key(master_key, 3);
+        let shutdown_pubkey =
+            match master_key.derive_priv(&secp_ctx, &ChildNumber::from_hardened_idx(1).unwrap()) {
+                Ok(shutdown_key) => Xpub::from_priv(&secp_ctx, &shutdown_key).public_key,
+                Err(_) => panic!("Your RNG is busted"),
+            };
+
+        let channel_master_key = get_hardened_extended_child_private_key(master_key, 2);
 
         NodeKeysManager {
             secp_ctx: secp_ctx,
-            channel_master_key: channel_master_key,
             node_secret: node_secret,
             node_id: node_id,
+            shutdown_pubkey: shutdown_pubkey,
+            channel_master_key: channel_master_key,
             seed: seed,
         }
     }
 
-    pub fn derive_channel_keys(&self, channel_id_params: &[u8; 32]) -> ChannelKeysManager {
-        let chan_id = u64::from_be_bytes(channel_id_params[0..8].try_into().unwrap());
+    pub fn derive_channel_keys(&self, channel_id: u32) -> ChannelKeysManager {
+        
         let mut unique_start = Sha256::engine();
-        unique_start.input(channel_id_params);
+        unique_start.input(&channel_id.to_be_bytes());
         unique_start.input(&self.seed);
 
         // We only seriously intend to rely on the channel_master_key for true secure
@@ -67,25 +75,25 @@ impl NodeKeysManager {
             .channel_master_key
             .derive_priv(
                 &self.secp_ctx,
-                &ChildNumber::from_hardened_idx((chan_id as u32) % (1 << 31))
+                &ChildNumber::from_hardened_idx(channel_id)
                     .expect("key space exhausted"),
             )
             .expect("Your RNG is busted");
         unique_start.input(&child_privkey.private_key[..]);
 
-        let seed = Sha256::from_engine(unique_start).to_byte_array();
+        let channel_seed = Sha256::from_engine(unique_start).to_byte_array();
 
         let commitment_seed = {
             let mut sha = Sha256::engine();
-            sha.input(&self.seed);
+            sha.input(&channel_seed);
             sha.input(&b"commitment seed"[..]);
             Sha256::from_engine(sha).to_byte_array()
         };
 
-        let revocation_base_key = key_step_derivation(&seed, &b"revocation base key"[..], &commitment_seed[..]);
-        let payment_key = key_step_derivation(&seed, &b"payment key"[..], &revocation_base_key[..]);
-        let delayed_payment_base_key = key_step_derivation(&seed, &b"delayed payment key"[..], &payment_key[..]);
-        let htlc_base_key = key_step_derivation(&seed, &b"HTLC base key"[..], &delayed_payment_base_key[..]);
+        let revocation_base_key = key_step_derivation(&channel_seed, &b"revocation base key"[..], &commitment_seed[..]);
+        let payment_key = key_step_derivation(&channel_seed, &b"payment key"[..], &revocation_base_key[..]);
+        let delayed_payment_base_key = key_step_derivation(&channel_seed, &b"delayed payment key"[..], &payment_key[..]);
+        let htlc_base_key = key_step_derivation(&channel_seed, &b"HTLC base key"[..], &delayed_payment_base_key[..]);
 
         ChannelKeysManager {
             commitment_seed,
