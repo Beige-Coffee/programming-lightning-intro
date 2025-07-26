@@ -3,8 +3,8 @@
 # Ensure the Rust toolchain is set to stable
 rustup default stable
 
-# Persistent data directory for Bitcoin Core - use tmp for write permissions
-BITCOIN_DATA_DIR=/tmp/.bitcoin/
+# Persistent data directory for Bitcoin Core
+BITCOIN_DATA_DIR=/home/runner/workspace/.bitcoin/
 # Ensure data directory exists
 mkdir -p $BITCOIN_DATA_DIR
 
