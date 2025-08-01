@@ -78,22 +78,22 @@ pub fn build_refund_transaction(
 }
 
 pub fn generate_revocation_pubkey(
-    countersignatory_basepoint: PublicKey,
-    per_commitment_point: PublicKey,
+    countersignatory_revocation_pubkey: PublicKey,
+    per_commitment_pubkey: PublicKey,
 ) -> PublicKey {
-    let rev_append_commit_hash_key =
-        hash_pubkeys(countersignatory_basepoint, per_commitment_point);
+    let h1 =
+        hash_pubkeys(countersignatory_revocation_pubkey, per_commitment_pubkey);
 
-    let commit_append_rev_hash_key =
-        hash_pubkeys(per_commitment_point, countersignatory_basepoint);
+    let h2 =
+        hash_pubkeys(per_commitment_pubkey, countersignatory_revocation_pubkey);
 
-    let countersignatory_contrib =
-        pubkey_multipication_tweak(countersignatory_basepoint, rev_append_commit_hash_key);
+    let R =
+        pubkey_multipication_tweak(countersignatory_revocation_pubkey, h1);
 
-    let broadcaster_contrib =
-        pubkey_multipication_tweak(per_commitment_point, commit_append_rev_hash_key);
+    let P =
+        pubkey_multipication_tweak(per_commitment_pubkey, h2);
 
-    let revocation_pubkey = add_pubkeys(countersignatory_contrib, broadcaster_contrib);
+    let revocation_pubkey = add_pubkeys(R, P);
 
     revocation_pubkey
 }

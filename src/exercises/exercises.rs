@@ -1,23 +1,58 @@
-#![allow(dead_code, unused_imports, unused_variables, unused_must_use, non_snake_case)]
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_variables,
+    unused_must_use,
+    non_snake_case
+)]
 use crate::internal;
+use bitcoin::amount::Amount;
 use bitcoin::blockdata::opcodes::all as opcodes;
+use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
+use bitcoin::hashes::HashEngine;
 use bitcoin::locktime::absolute::LockTime;
 use bitcoin::script::ScriptBuf;
-use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::Message;
+use bitcoin::secp256k1::Secp256k1;
+use bitcoin::secp256k1::{PublicKey, Scalar, SecretKey};
+use bitcoin::sighash::EcdsaSighashType;
+use bitcoin::sighash::SighashCache;
 use bitcoin::transaction::Version;
 use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, Witness};
 use internal::builder::Builder;
-use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
-use internal::tx_utils::{build_output, build_transaction};
+use internal::key_utils::{
+    add_privkeys, add_pubkeys, hash_pubkeys, privkey_multipication_tweak, pubkey_from_secret,
+    pubkey_multipication_tweak,
+};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
-use bitcoin::hashes::sha256::Hash as Sha256;
-use bitcoin::hashes::HashEngine;
+use internal::tx_utils::{build_output, build_transaction};
 
-pub fn two_of_two_multisig_witness_script(
-    pubkey1: &PublicKey,
-    pubkey2: &PublicKey,
-) -> ScriptBuf {
+pub fn generate_p2wpkh_signature(
+    transaction: Transaction,
+    input_idx: usize,
+    script: &ScriptBuf,
+    amount: Amount,
+    sighash_type: EcdsaSighashType,
+    private_key: SecretKey,
+) -> Signature {
+    let secp = Secp256k1::new();
+
+    let mut cache = SighashCache::new(&transaction);
+
+    let sighash = cache
+        .p2wpkh_signature_hash(input_idx, &script, amount, sighash_type)
+        .unwrap();
+
+    let message = Message::from(sighash);
+
+    let signature = secp.sign_ecdsa(&message, &private_key);
+
+    signature
+}
+
+pub fn two_of_two_multisig_witness_script(pubkey1: &PublicKey, pubkey2: &PublicKey) -> ScriptBuf {
     unimplemented!()
 }
 
@@ -27,7 +62,6 @@ pub fn build_funding_transaction(
     bob_pubkey: &PublicKey,
     amount: u64,
 ) -> Transaction {
-
     unimplemented!()
 }
 
@@ -36,9 +70,8 @@ pub fn build_refund_transaction(
     alice_pubkey: PublicKey,
     bob_pubkey: PublicKey,
     alice_balance: u64,
-    bob_balance: u64
+    bob_balance: u64,
 ) -> Transaction {
-
     unimplemented!()
 }
 
@@ -46,12 +79,13 @@ pub fn generate_revocation_pubkey(
     countersignatory_basepoint: PublicKey,
     per_commitment_point: PublicKey,
 ) -> PublicKey {
-
     unimplemented!()
 }
 
-pub fn generate_revocation_privkey(per_commitment_secret: SecretKey, countersignatory_revocation_base_secret: SecretKey) -> SecretKey {
-
+pub fn generate_revocation_privkey(
+    per_commitment_secret: SecretKey,
+    countersignatory_revocation_base_secret: SecretKey,
+) -> SecretKey {
     unimplemented!()
 }
 
@@ -60,7 +94,6 @@ pub fn to_local(
     to_local_delayed_pubkey: &PublicKey,
     to_self_delay: i64,
 ) -> ScriptBuf {
-    
     unimplemented!()
 }
 
@@ -73,7 +106,6 @@ pub fn build_commitment_transaction(
     local_amount: u64,
     remote_amount: u64,
 ) -> Transaction {
-
     unimplemented!()
 }
 
@@ -90,7 +122,6 @@ pub fn build_htlc_commitment_transaction(
     local_amount: u64,
     remote_amount: u64,
 ) -> Transaction {
-
     unimplemented!()
 }
 
@@ -102,15 +133,7 @@ pub fn build_htlc_timeout_transaction(
     cltv_expiry: u32,
     htlc_amount: u64,
 ) -> Transaction {
-    let htlc_timeout_script = to_local(
-        revocation_pubkey,
-        to_local_delayed_pubkey,
-        to_self_delay,
-    );
+    let htlc_timeout_script = to_local(revocation_pubkey, to_local_delayed_pubkey, to_self_delay);
 
     unimplemented!()
 }
-
-
-
-
