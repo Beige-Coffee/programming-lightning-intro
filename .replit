@@ -1,6 +1,24 @@
-run = "cargo test"
-hidden = ["target", ".tutorial", "db", "start.sh", "bitcoin.conf", "electrs.toml", ".config", "build.rs"]
-entrypoint = "src/lib.rs"
+#run = "cargo test --lib exercises::"
+# change `run` to the below to run appendix tests
+run = "cargo test --lib exercises_appendix::"
+
+hidden = [
+  "target",
+  ".tutorial",
+  "db",
+  "start.sh",
+  "bitcoin.conf",
+  "electrs.toml",
+  ".config",
+  "build.rs",
+  "src/lib.solution.rs",
+  "src/internal",
+  "src/test.rs",
+  ".gitignore",
+  "Cargo.toml",
+  "Cargo.lock",
+]
+entrypoint = "src/exercises/exercises.rs"
 onBoot = ["bash", "start.sh"]
 
 [packager]
@@ -22,3 +40,28 @@ pattern = "**/*.rs"
 
 [languages.rust.languageServer]
 start = "rust-analyzer"
+
+[[ports]]
+localPort = 8332
+externalPort = 3002
+exposeLocalhost = true
+
+[[ports]]
+localPort = 8333
+externalPort = 3001
+
+[[ports]]
+localPort = 9735
+externalPort = 3003
+
+[[ports]]
+localPort = 18443
+externalPort = 80
+
+[[ports]]
+localPort = 18444
+externalPort = 3000
+
+[deployment]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "cargo test"]

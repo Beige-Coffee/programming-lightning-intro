@@ -4,7 +4,7 @@ use crate::exercises_appendix::exercises::{NodeKeysManager, Basepoint};
 use crate::exercises_appendix::tx_exercises::{get_commitment_transaction_number_obscure_factor,
                                              build_commitment_input,
                                              build_commitment_locktime};
-use crate::exercises_appendix::answers::{build_commitment_input as build_commitment_input_answer };
+use crate::exercises_appendix::solutions::{build_commitment_input as build_commitment_input_answer };
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::PublicKey;
@@ -100,7 +100,7 @@ fn test_node_keys_manager() {
         
     assert_eq!(
         actual, expected,
-        "Revocation pubkey doesn't match expected value"
+        "Node ID doesn't match expected value"
     );
 }
 
@@ -118,11 +118,11 @@ fn test_derive_channel_keys() {
 
     let actual =  hex::encode(htlc_base_key.secret_bytes());
 
-    let expected = "16bd658180e8edb308baded18cf09fc5fb831ce9ee7bd70c50e6af58dd5b160d";
+    let expected = "4198bf640ed19ac652ccc67180bb6e7233b42c8e7a9b9deedff400ef628be33e";
 
     assert_eq!(
         actual, expected,
-        "Revocation pubkey doesn't match expected value"
+        "htlc_base_key doesn't match expected value"
     );
 }
 
@@ -144,11 +144,11 @@ fn test_derive_private_key() {
 
     let actual =  hex::encode(htlc_commitment_key.secret_bytes());
 
-    let expected = "4fefaebd76a2d2b98262a435dd101be4e285988d4d0c6a054954b4e96961db7b";
+    let expected = "112d3c7fe11adc1239484b95c879049796786eaaf56342379183a746e30f2dfc";
 
     assert_eq!(
         actual, expected,
-        "Revocation pubkey doesn't match expected value"
+        "HTLC key doesn't match expected value"
     );
 }
 
@@ -170,7 +170,7 @@ fn test_derive_revocation_public_key() {
 
     let actual = pubkey.to_string();
 
-    let expected = "02042982acd4701a09a3c589d66344559e338e532a343f87576e1595c863895811";
+    let expected = "03f582ebe04e6711cd72eada2c4778eb801922cf8656045d0f078f436d99c9ff47";
 
     assert_eq!(
         actual, expected,

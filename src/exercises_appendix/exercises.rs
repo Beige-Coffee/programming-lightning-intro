@@ -9,7 +9,7 @@ use bitcoin::secp256k1::Scalar;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::secp256k1::SecretKey;
 use serde::ser::Serialize;
-use crate::exercises::exercises::{
+use crate::exercises::solutions::{
   generate_revocation_pubkey
 };
 
@@ -18,7 +18,7 @@ pub struct NodeKeysManager {
     pub secp_ctx: Secp256k1<secp256k1::All>,
     pub node_secret: SecretKey,
     pub node_id: PublicKey,
-    pub shutdown_pubkey: PublicKey,
+    pub shutdown_xpub: Xpub,
     pub channel_master_key: Xpriv,
     pub seed: [u8; 32],
 }
@@ -36,27 +36,31 @@ impl NodeKeysManager {
     pub(crate) fn new(seed: [u8; 32]) -> NodeKeysManager {
         let secp_ctx = Secp256k1::new();
 
-        let master_key = get_master_key(seed);
+        let network = Network::Regtest;
+        let master_key = Xpriv::new_master(network, &seed).unwrap();
 
         let node_secret = master_key
             .derive_priv(&secp_ctx, &ChildNumber::from_hardened_idx(0).unwrap())
             .expect("Your RNG is busted")
             .private_key;
+
         let node_id = PublicKey::from_secret_key(&secp_ctx, &node_secret);
 
-        let shutdown_pubkey =
-            match master_key.derive_priv(&secp_ctx, &ChildNumber::from_hardened_idx(1).unwrap()) {
-                Ok(shutdown_key) => Xpub::from_priv(&secp_ctx, &shutdown_key).public_key,
-                Err(_) => panic!("Your RNG is busted"),
-            };
+        let shutdown_xpub = Xpub::from_priv(
+            &secp_ctx, 
+            &master_key.derive_priv(&secp_ctx, &ChildNumber::from_hardened_idx(1).unwrap())
+                .expect("Your RNG is busted")
+        );
 
-        let channel_master_key = get_hardened_extended_child_private_key(master_key, 2);
+        let channel_master_key = master_key
+            .derive_priv(&secp_ctx, &ChildNumber::from_hardened_idx(2).unwrap())
+            .expect("Your RNG is busted");
 
         NodeKeysManager {
             secp_ctx: secp_ctx,
             node_secret: node_secret,
             node_id: node_id,
-            shutdown_pubkey: shutdown_pubkey,
+            shutdown_xpub: shutdown_xpub,
             channel_master_key: channel_master_key,
             seed: seed,
         }
@@ -64,13 +68,10 @@ impl NodeKeysManager {
 
     pub fn derive_channel_keys(&self, channel_id: u32) -> ChannelKeysManager {
         
-        let mut unique_start = Sha256::engine();
-        unique_start.input(&channel_id.to_be_bytes());
-        unique_start.input(&self.seed);
+        let mut unique = Sha256::engine();
+            unique.input(&channel_id.to_be_bytes());
+            unique.input(&self.seed);
 
-        // We only seriously intend to rely on the channel_master_key for true secure
-        // entropy, everything else just ensures uniqueness. We rely on the unique_start (ie
-        // starting_time provided in the constructor) to be unique.
         let child_privkey = self
             .channel_master_key
             .derive_priv(
@@ -79,9 +80,10 @@ impl NodeKeysManager {
                     .expect("key space exhausted"),
             )
             .expect("Your RNG is busted");
-        unique_start.input(&child_privkey.private_key[..]);
 
-        let channel_seed = Sha256::from_engine(unique_start).to_byte_array();
+            unique.input(&child_privkey.private_key[..]);
+
+        let channel_seed = Sha256::from_engine(unique).to_byte_array();
 
         let commitment_seed = {
             let mut sha = Sha256::engine();
@@ -105,9 +107,8 @@ impl NodeKeysManager {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Basepoint {
-    Revocation,
     Payment,
     DelayedPayment,
     HTLC,
@@ -136,11 +137,15 @@ impl ChannelKeysManager {
         
         // First, get the appropriate base key based on the basepoint type
         let basepoint_secret = match basepoint_type {
-            Basepoint::Payment => &self.payment_key,
-            Basepoint::DelayedPayment => &self.delayed_payment_base_key,
-            Basepoint::HTLC => &self.htlc_base_key,
-            Basepoint::Revocation => &self.revocation_base_key,
+            Basepoint::Payment => self.payment_key,
+            Basepoint::DelayedPayment => self.delayed_payment_base_key,
+            Basepoint::HTLC => self.htlc_base_key,
         };
+
+        // if basepoint is payment, return secret itself
+        if basepoint_type == Basepoint::Payment {
+            return basepoint_secret;
+        }
 
         // Second, convert basepoint to public key
         let basepoint = PublicKey::from_secret_key(&secp_ctx, &basepoint_secret);
