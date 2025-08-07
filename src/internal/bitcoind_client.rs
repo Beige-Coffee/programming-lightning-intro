@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
+#![allow(dead_code, unused_imports, unused_variables, mismatched_lifetime_syntaxes, unused_must_use)]
 use bitcoin::hash_types::{BlockHash};
 use bitcoin::{Network };
 use lightning_block_sync::http::HttpEndpoint;

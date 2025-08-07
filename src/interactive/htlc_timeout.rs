@@ -5,6 +5,7 @@ use bitcoin::consensus::encode::serialize_hex;
 use bitcoin::secp256k1::{PublicKey, SecretKey};
 use exercises::exercises::{build_htlc_timeout_transaction,
 };
+use bitcoin::sighash::EcdsaSighashType;
 use bitcoin::PublicKey as BitcoinPubKey;
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
@@ -55,12 +56,55 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
         htlc_amount
         );
 
-    let signed_tx = sign_funding_transaction(tx,
-        our_key_manager.funding_public_key,
-        our_key_manager.funding_private_key,
-        counterparty_key_manager.funding_public_key,
-        our_key_manager.funding_private_key,
-       );
+    // Prepare the redeem script for signing (e.g., P2PKH or P2WPKH)
+    let redeem_script =
+        build_htlc_offerer_witness_script(
+            &our_key_manager.revocation_pubkey,
+            &counterparty_key_manager.htlc_pubkey,
+            &our_key_manager.htlc_pubkey,
+            &payment_hash160);
+
+    let our_signature = generate_p2wsh_signature(
+         tx.clone(), 
+         0,
+         &redeem_script,
+         funding_amount,
+         EcdsaSighashType::All,
+        our_key_manager.htlc_private_key);
+
+    let counterparty_signature = generate_p2wsh_signature(
+         tx.clone(), 
+         0,
+         &redeem_script,
+         funding_amount,
+         EcdsaSighashType::All,
+        counterparty_key_manager.htlc_private_key);
+
+    // Convert signature to DER and append SigHashType
+    let mut our_signature_der = our_signature.serialize_der().to_vec();
+    our_signature_der.push(EcdsaSighashType::All as u8);
+
+    let mut counterparty_signature_der = counterparty_signature.serialize_der().to_vec();
+    counterparty_signature_der.push(EcdsaSighashType::All as u8);
+
+    // Determine signature order based on pubkey comparison
+    let our_sig_first = our_key_manager.funding_public_key.serialize()[..] > counterparty_key_manager.funding_public_key.serialize()[..];
+
+    // Add the signature and public key to the witness
+    let mut signed_tx = tx.clone();
+
+    // First push empty element for NULLDUMMY compliance
+    signed_tx.input[0].witness.push(Vec::new());
+
+
+    signed_tx.input[0].witness.push(counterparty_signature_der);
+    signed_tx.input[0].witness.push(our_signature_der);
+
+    signed_tx.input[0].witness.push(vec![]);
+
+    signed_tx.input[0]
+        .witness
+        .push(redeem_script.clone().into_bytes());
 
     println!("\n");
     println!("Tx ID: {}", signed_tx.compute_txid());

@@ -29,29 +29,6 @@ use internal::key_utils::{
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use internal::tx_utils::{build_output, build_transaction};
 
-pub fn generate_p2wpkh_signature(
-    transaction: Transaction,
-    input_idx: usize,
-    script: &ScriptBuf,
-    amount: Amount,
-    sighash_type: EcdsaSighashType,
-    private_key: SecretKey,
-) -> Signature {
-    let secp = Secp256k1::new();
-
-    let mut cache = SighashCache::new(&transaction);
-
-    let sighash = cache
-        .p2wpkh_signature_hash(input_idx, &script, amount, sighash_type)
-        .unwrap();
-
-    let message = Message::from(sighash);
-
-    let signature = secp.sign_ecdsa(&message, &private_key);
-
-    signature
-}
-
 pub fn two_of_two_multisig_witness_script(pubkey1: &PublicKey, pubkey2: &PublicKey) -> ScriptBuf {
     unimplemented!()
 }

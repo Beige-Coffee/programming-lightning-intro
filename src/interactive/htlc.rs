@@ -65,7 +65,7 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
         our_key_manager.funding_public_key,
         our_key_manager.funding_private_key,
         counterparty_key_manager.funding_public_key,
-        our_key_manager.funding_private_key,
+        counterparty_key_manager.funding_private_key,
        );
 
     println!("\n");
