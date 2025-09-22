@@ -25,7 +25,7 @@ const HASH160_DUMMY: [u8; 20] = [
 ];
 
 #[test]
-fn test_two_of_two_multisig_witness_script() {
+fn test_01_two_of_two_multisig_witness_script() {
     let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
     let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
     let result = two_of_two_multisig_witness_script(&alice_pubkey, &bob_pubkey);
@@ -41,7 +41,7 @@ fn test_two_of_two_multisig_witness_script() {
 }
 
 #[test]
-fn test_build_funding_transaction() {
+fn test_02_build_funding_transaction() {
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -76,7 +76,7 @@ fn test_build_funding_transaction() {
 }
 
 #[test]
-fn test_build_refund_transaction() {
+fn test_03_build_refund_transaction() {
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -112,7 +112,7 @@ fn test_build_refund_transaction() {
 }
 
 #[test]
-fn test_generate_revocation_pubkey() {
+fn test_04_generate_revocation_pubkey() {
     let countersignatory_basepoint = pubkey_from_private_key(&[0x01; 32]);
     let per_commitment_point = pubkey_from_private_key(&[0x02; 32]);
 
@@ -141,7 +141,7 @@ fn test_generate_revocation_pubkey() {
 }
 
 #[test]
-fn test_generate_revocation_privkey() {
+fn test_05_generate_revocation_privkey() {
     let countersignatory_secret = secp256k1_private_key(&[0x01; 32]);
     let per_commitment_secret = secp256k1_private_key(&[0x02; 32]);
 
@@ -159,7 +159,7 @@ fn test_generate_revocation_privkey() {
 }
 
 #[test]
-fn test_to_local() {
+fn test_06_to_local() {
     let revocation_key = pubkey_from_private_key(&[0x01; 32]);
     let to_local_delayed_pubkey = pubkey_from_private_key(&[0x02; 32]);
     let to_self_delay: i64 = 144;
@@ -173,7 +173,7 @@ fn test_to_local() {
 }
 
 #[test]
-fn test_build_commitment_transaction() {
+fn test_07_build_commitment_transaction() {
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -217,7 +217,7 @@ fn test_build_commitment_transaction() {
 }
 
 #[test]
-fn test_build_htlc_commitment_transaction() {
+fn test_08_build_htlc_commitment_transaction() {
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()
@@ -269,7 +269,7 @@ fn test_build_htlc_commitment_transaction() {
 }
 
 #[test]
-fn test_build_htlc_timeout_transaction() {
+fn test_09_build_htlc_timeout_transaction() {
     let outpoint = OutPoint::new(
         "d9334caed6503ebc710d13a5f663f03bec531026d2bc786befdfdb8ef5aad721"
             .parse::<Txid>()

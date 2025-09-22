@@ -34,9 +34,9 @@ pub fn build_funding_transaction(
     amount: u64,
 ) -> Transaction {
 
-    let output_script = two_of_two_multisig_witness_script(alice_pubkey, bob_pubkey);
+    let witness_script = two_of_two_multisig_witness_script(alice_pubkey, bob_pubkey);
 
-    let txout = build_output(amount, output_script.to_p2wsh());
+    let txout = build_output(amount, witness_script.to_p2wsh());
 
     let version = Version::TWO;
     let locktime = LockTime::ZERO;
@@ -78,20 +78,20 @@ pub fn build_refund_transaction(
 }
 
 pub fn generate_revocation_pubkey(
-    countersignatory_revocation_pubkey: PublicKey,
-    per_commitment_pubkey: PublicKey,
+    countersignatory_basepoint: PublicKey,
+    per_commitment_point: PublicKey,
 ) -> PublicKey {
     let h1 =
-        hash_pubkeys(countersignatory_revocation_pubkey, per_commitment_pubkey);
+        hash_pubkeys(countersignatory_basepoint, per_commitment_point);
 
     let h2 =
-        hash_pubkeys(per_commitment_pubkey, countersignatory_revocation_pubkey);
+        hash_pubkeys(per_commitment_point, countersignatory_basepoint);
 
     let R =
-        pubkey_multipication_tweak(countersignatory_revocation_pubkey, h1);
+        pubkey_multipication_tweak(countersignatory_basepoint, h1);
 
     let P =
-        pubkey_multipication_tweak(per_commitment_pubkey, h2);
+        pubkey_multipication_tweak(per_commitment_point, h2);
 
     let revocation_pubkey = add_pubkeys(R, P);
 

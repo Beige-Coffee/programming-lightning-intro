@@ -1,4 +1,4 @@
-run = "cargo test --lib exercises::"
+run = "cargo test --lib exercises:: -- --test-threads=1"
 # change `run` to the below to run appendix tests
 #run = "cargo test --lib exercises_appendix::"
 
@@ -19,7 +19,6 @@ hidden = [
   "Cargo.lock",
 ]
 entrypoint = "src/exercises/exercises.rs"
-onBoot = ["bash", "start.sh"]
 
 [packager]
 language = "rust"
@@ -65,3 +64,6 @@ externalPort = 3000
 [deployment]
 deploymentTarget = "cloudrun"
 run = ["sh", "-c", "cargo test"]
+
+[agent]
+expertMode = true
