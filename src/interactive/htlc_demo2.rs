@@ -121,7 +121,7 @@ pub fn sign_transaction(tx: Transaction)-> Transaction {
 
 fn build_p2wpkh_tx(txin: TxIn, pubkey: PublicKey) -> Transaction {
     let output_script = p2wpkh_output_script(pubkey);
-    let output = build_output(405_000, output_script);
+    let output = build_output(404_000, output_script);
     
     let version = Version::TWO;
     let locktime = LockTime::ZERO;
