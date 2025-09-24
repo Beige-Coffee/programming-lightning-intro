@@ -1,5 +1,4 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
-use internal::builder::Builder;
 use crate::internal;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::blockdata::script::ScriptBuf;
@@ -9,7 +8,8 @@ use bitcoin::hashes::Hash;
 use bitcoin::locktime::absolute::LockTime;
 use bitcoin::sighash::EcdsaSighashType;
 use bitcoin::transaction::Version;
-use bitcoin::secp256k1::{PublicKey};
+use bitcoin::secp256k1::{PublicKey as secp256k1PublicKey};
+use bitcoin::PublicKey;
 use bitcoin::{TxIn};
 use bitcoin::hashes::sha256::Hash as Sha256;
 use std::time::Duration;
@@ -21,6 +21,7 @@ use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_s
 use internal::tx_utils::{build_output,get_unspent_output, build_transaction, get_funding_input, get_htlc_funding_input};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use internal::sign_utils::{sign_raw_transaction, sign_funding_transaction, generate_p2wsh_signature};
+use bitcoin::script::{Builder};
 
 
 pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,

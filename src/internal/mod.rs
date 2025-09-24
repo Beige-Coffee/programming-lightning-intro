@@ -1,6 +1,5 @@
 
 pub mod bitcoind_client;
-pub mod builder;
 pub mod convert;
 pub mod hex_utils;
 pub mod key_utils;

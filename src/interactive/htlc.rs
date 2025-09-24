@@ -2,13 +2,14 @@
 use crate::internal;
 use crate::exercises;
 use bitcoin::consensus::encode::serialize_hex;
-use bitcoin::secp256k1::{PublicKey, SecretKey};
+use bitcoin::secp256k1::{PublicKey as secp256k1PublicKey, SecretKey};
+use bitcoin::PublicKey;
 use exercises::exercises::{
     build_htlc_commitment_transaction
 };
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
-      pubkey_from_private_key, secp256k1_private_key, bitcoin_pubkey_from_private_key};
+      pubkey_from_private_key, secp256k1_private_key};
 use internal::tx_utils::{build_output,get_unspent_output, build_transaction, get_funding_input, get_htlc_funding_input};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use internal::sign_utils::{sign_raw_transaction, sign_funding_transaction, generate_p2wsh_signature};
@@ -43,9 +44,9 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
     let payment_hash160 = HASH160_DUMMY;
     let to_self_delay: i64 = 144;
 
-    let htlc_amount = 400_000;
-    let local_amount = 2_600_000;
-    let remote_amount = 2_000_000;
+    let htlc_amount = 405_000;
+    let local_amount = 3_593_500;
+    let remote_amount = 1_000_500;
 
 
     let tx = build_htlc_commitment_transaction(

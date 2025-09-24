@@ -3,6 +3,7 @@ use crate::internal;
 use crate::exercises;
 use bitcoin::consensus::encode::serialize_hex;
 use bitcoin::{TxIn};
+use bitcoin::PublicKey;
 use exercises::exercises::build_funding_transaction;
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,

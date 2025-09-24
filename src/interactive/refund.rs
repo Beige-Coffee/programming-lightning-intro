@@ -2,12 +2,13 @@
 use crate::internal;
 use crate::exercises;
 use bitcoin::consensus::encode::serialize_hex;
-use bitcoin::secp256k1::{PublicKey, SecretKey};
+use bitcoin::secp256k1::{PublicKey as secp256k1PublicKey, SecretKey};
+use bitcoin::PublicKey;
 use lightning::chain::chaininterface::{BroadcasterInterface,};
 use exercises::exercises::{build_refund_transaction, };
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
-      pubkey_from_private_key, secp256k1_private_key, bitcoin_pubkey_from_private_key};
+      pubkey_from_private_key, secp256k1_private_key};
 use internal::tx_utils::{build_output,get_unspent_output, build_transaction, get_funding_input, get_htlc_funding_input};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use internal::sign_utils::{sign_raw_transaction, sign_funding_transaction, generate_p2wsh_signature};
@@ -87,7 +88,7 @@ pub async fn run(funding_txid: String) {
         };
     
     let funding_amount = 5_000_000;
-    let our_balance = 4_999_500;
+    let our_balance = 4_998_500;
     let counterparty_balance = 500;
     
     create_broadcast_funding_tx(bitcoind, txid.clone(), our_key_manager, counterparty_key_manager, funding_amount,

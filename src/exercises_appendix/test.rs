@@ -11,7 +11,8 @@ use bitcoin::secp256k1::PublicKey;
 use bitcoin::secp256k1::SecretKey;
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, Witness};
 use bitcoin::hash_types::Txid;
-use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, pubkey_from_private_key, privkey_multipication_tweak, hash_pubkeys};
+use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, pubkey_from_private_key, privkey_multipication_tweak, hash_pubkeys,
+                         secp256k1pubkey_from_private_key};
 use internal::tx_utils::{build_output, build_transaction};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use bitcoin::locktime::absolute::LockTime;
@@ -20,8 +21,8 @@ pub const INITIAL_COMMITMENT_NUMBER: u64 = (1 << 48) - 1;
 
 #[test]
 fn test_get_commitment_transaction_number_obscure_factor() {
-    let open_basepoint = pubkey_from_private_key(&[0x01; 32]);
-    let accept_basepoint = pubkey_from_private_key(&[0x01; 32]);
+    let open_basepoint = secp256k1pubkey_from_private_key(&[0x01; 32]);
+    let accept_basepoint = secp256k1pubkey_from_private_key(&[0x01; 32]);
 
     let obscure_factor = get_commitment_transaction_number_obscure_factor(
         &open_basepoint,
@@ -90,7 +91,6 @@ fn test_build_commitment_locktime() {
 
 #[test]
 fn test_node_keys_manager() {
-    let countersignatory_basepoint = pubkey_from_private_key(&[0x01; 32]);
     let seed = &[0x02; 32];
     let keys_manager = NodeKeysManager::new(*seed);
 
@@ -106,7 +106,6 @@ fn test_node_keys_manager() {
 
 #[test]
 fn test_derive_channel_keys() {
-    let countersignatory_basepoint = pubkey_from_private_key(&[0x01; 32]);
     let seed = &[0x02; 32];
     let keys_manager = NodeKeysManager::new(*seed);
     let secp_ctx = &Secp256k1::new();
@@ -128,7 +127,6 @@ fn test_derive_channel_keys() {
 
 #[test]
 fn test_derive_private_key() {
-    let countersignatory_basepoint = pubkey_from_private_key(&[0x01; 32]);
     let seed = &[0x02; 32];
     let keys_manager = NodeKeysManager::new(*seed);
     let secp_ctx = &Secp256k1::new();
@@ -154,7 +152,7 @@ fn test_derive_private_key() {
 
 #[test]
 fn test_derive_revocation_public_key() {
-    let countersignatory_basepoint = pubkey_from_private_key(&[0x01; 32]);
+    let countersignatory_basepoint = secp256k1pubkey_from_private_key(&[0x01; 32]);
     let seed = &[0x02; 32];
     let keys_manager = NodeKeysManager::new(*seed);
     let secp_ctx = &Secp256k1::new();

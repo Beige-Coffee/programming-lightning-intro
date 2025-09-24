@@ -1,18 +1,20 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use, non_snake_case)]
 use crate::internal;
-use bitcoin::script::ScriptBuf;
-use internal::builder::Builder;
+use bitcoin::script::{Builder, ScriptBuf, ScriptHash};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
 use internal::tx_utils::{build_output, build_transaction};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use bitcoin::blockdata::opcodes::all as opcodes;
-use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
-use bitcoin::PublicKey as BitcoinPublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey as secp256k1PublicKey, Scalar};
+use bitcoin::PublicKey;
 use bitcoin::hashes::Hash;
 use bitcoin::{Block, OutPoint, PubkeyHash, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
 
+//
+// Exercise 1
+//
 
 pub fn two_of_two_multisig_witness_script(
     pubkey1: &PublicKey,
@@ -26,6 +28,10 @@ pub fn two_of_two_multisig_witness_script(
         .push_opcode(opcodes::OP_CHECKMULTISIG)
         .into_script()
 }
+
+//
+// Exercise 2
+//
 
 pub fn build_funding_transaction(
     txins: Vec<TxIn>,
@@ -50,6 +56,10 @@ pub fn build_funding_transaction(
 
     tx
 }
+
+//
+// Exercise 3
+//
 
 pub fn build_refund_transaction(
     funding_txin: TxIn,
@@ -77,10 +87,14 @@ pub fn build_refund_transaction(
     tx
 }
 
+//
+// Exercise 4
+//
+
 pub fn generate_revocation_pubkey(
-    countersignatory_basepoint: PublicKey,
-    per_commitment_point: PublicKey,
-) -> PublicKey {
+    countersignatory_basepoint: secp256k1PublicKey,
+    per_commitment_point: secp256k1PublicKey,
+) -> secp256k1PublicKey {
     let h1 =
         hash_pubkeys(countersignatory_basepoint, per_commitment_point);
 
@@ -97,6 +111,10 @@ pub fn generate_revocation_pubkey(
 
     revocation_pubkey
 }
+
+//
+// Exercise 5
+//
 
 pub fn generate_revocation_privkey(per_commitment_secret: SecretKey, countersignatory_revocation_base_secret: SecretKey) -> SecretKey {
 
@@ -115,6 +133,10 @@ pub fn generate_revocation_privkey(per_commitment_secret: SecretKey, countersign
     add_privkeys(key1, key2)
 }
 
+//
+// Exercise 6
+//
+
 pub fn to_local(
     revocation_key: &PublicKey,
     to_local_delayed_pubkey: &PublicKey,
@@ -132,6 +154,10 @@ pub fn to_local(
         .push_opcode(opcodes::OP_CHECKSIG)
         .into_script()
 }
+
+//
+// Exercise 7
+//
 
 pub fn build_commitment_transaction(
     funding_txin: TxIn,
@@ -161,6 +187,10 @@ pub fn build_commitment_transaction(
                       vec![local_output, remote_output]);
     tx
 }
+
+//
+// Exercise 8
+//
 
 pub fn build_htlc_commitment_transaction(
     funding_txin: TxIn,
@@ -203,6 +233,10 @@ pub fn build_htlc_commitment_transaction(
 
     tx
 }
+
+//
+// Exercise 9
+//
 
 pub fn build_htlc_timeout_transaction(
     htlc_txin: TxIn,

@@ -14,7 +14,6 @@ use bitcoin::{OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::amount::Amount;
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
-use internal::builder::Builder;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::{PubkeyHash};
 use bitcoin::{Network};

@@ -2,7 +2,8 @@
 use crate::internal;
 use crate::exercises;
 use bitcoin::consensus::encode::serialize_hex;
-use bitcoin::secp256k1::{PublicKey, SecretKey};
+use bitcoin::secp256k1::{PublicKey as secp256k1PublicKey, SecretKey};
+use bitcoin::PublicKey;
 use exercises::exercises::{build_commitment_transaction};
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
@@ -96,8 +97,8 @@ pub async fn run(funding_txid: String) {
         };
     
     let funding_amount = 5_000_000;
-    let our_balance = 3_000_000;
-    let counterparty_balance = 2_000_000;
+    let our_balance = 3_998_500;
+    let counterparty_balance = 1_000_500;
     
     create_broadcast_funding_tx(bitcoind, txid.clone(), our_key_manager, counterparty_key_manager, funding_amount,
                                our_balance, counterparty_balance).await;

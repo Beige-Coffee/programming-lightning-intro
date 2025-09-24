@@ -7,14 +7,13 @@ use bitcoin::hashes::Hash;
 use bitcoin::hashes::HashEngine;
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
-use bitcoin::PublicKey as BitcoinPublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey as secp256k1PublicKey, Scalar};
+use bitcoin::PublicKey;
 use bitcoin::script::{ScriptBuf};
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::amount::Amount;
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
-use internal::builder::Builder;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::{PubkeyHash};
 use bitcoin::{Network};
@@ -69,7 +68,7 @@ pub fn sign_funding_transaction(tx: Transaction,
     counterparty_signature_der.push(EcdsaSighashType::All as u8);
 
     // Determine signature order based on pubkey comparison
-    let our_sig_first = our_funding_public_key.serialize()[..] > counterparty_funding_public_key.serialize()[..];
+    let our_sig_first = our_funding_public_key.inner.serialize()[..] > counterparty_funding_public_key.inner.serialize()[..];
 
     // Add the signature and public key to the witness
     let mut signed_tx = tx.clone();

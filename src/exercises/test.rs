@@ -8,12 +8,13 @@ use crate::internal;
 use bitcoin::hash_types::Txid;
 use bitcoin::script::ScriptBuf;
 use bitcoin::secp256k1::{self, Secp256k1};
-use bitcoin::secp256k1::{PublicKey, Scalar, SecretKey};
-use bitcoin::PublicKey as BitcoinPublicKey;
+use bitcoin::secp256k1::{PublicKey as secp256k1PublicKey, Scalar, SecretKey};
+use bitcoin::PublicKey;
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, Witness};
 use internal::key_utils::{
     add_privkeys, add_pubkeys, hash_pubkeys, privkey_multipication_tweak, pubkey_from_private_key,
     pubkey_from_secret, pubkey_multipication_tweak, secp256k1_private_key,
+    secp256k1pubkey_from_private_key,
 };
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use internal::tx_utils::{build_output, build_transaction};
@@ -26,16 +27,13 @@ const HASH160_DUMMY: [u8; 20] = [
 
 #[test]
 fn test_01_two_of_two_multisig_witness_script() {
-    let alice_pubkey = pubkey_from_private_key(&[0x01; 32]);
-    let bob_pubkey = pubkey_from_private_key(&[0x02; 32]);
-    let result = two_of_two_multisig_witness_script(&alice_pubkey, &bob_pubkey);
+    let pubkey1 = pubkey_from_private_key(&[0x01; 32]);
+    let pubkey2 = pubkey_from_private_key(&[0x02; 32]);
+    let result = two_of_two_multisig_witness_script(&pubkey1, &pubkey2);
 
     let their_solution = format!("{}", result.script_hash());
     println!("their solution: {}", their_solution);
-    let acceptable_solutions = [
-        "d8fecda80c30e89a9e7f0964ee79ce055288bc1c".to_string(),
-        "e5c7b40d1f14542cc2c7a15819de088a33c8f7ba".to_string(),
-    ];
+    let acceptable_solutions = ["d8fecda80c30e89a9e7f0964ee79ce055288bc1c".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution))
 }
@@ -61,16 +59,14 @@ fn test_02_build_funding_transaction() {
 
     let amount: u64 = 100000;
 
-    let transaction = build_funding_transaction(txin, &pubkey2, &pubkey1, amount);
+    let transaction = build_funding_transaction(txin, &pubkey1, &pubkey2, amount);
 
     let their_solution = transaction.compute_txid().to_string();
 
     println!("their solution: {}", their_solution);
 
-    let acceptable_solutions = [
-        "8f28cec85c8d986559c7bf5760d57d57446e26f27ac3ed623d591e4579b7bc9c".to_string(),
-        "90c0c517ef964f7082837865a12702b5c8bc4f45500b59a9ee09d1e8f681bfd4".to_string(),
-    ];
+    let acceptable_solutions =
+        ["8f28cec85c8d986559c7bf5760d57d57446e26f27ac3ed623d591e4579b7bc9c".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
 }
@@ -94,8 +90,8 @@ fn test_03_build_refund_transaction() {
     let pubkey1 = pubkey_from_private_key(&[0x01; 32]);
     let pubkey2 = pubkey_from_private_key(&[0x02; 32]);
 
-    let alice_amount: u64 = 100000;
-    let bob_amount: u64 = 100000;
+    let alice_amount: u64 = 4_998_500;
+    let bob_amount: u64 = 500;
 
     let transaction = build_refund_transaction(txin, pubkey1, pubkey2, alice_amount, bob_amount);
 
@@ -103,18 +99,16 @@ fn test_03_build_refund_transaction() {
 
     println!("their solution: {}", their_solution);
 
-    let acceptable_solutions = [
-        "5964f26f1734b139b30b71a9d37bb10c56422d2cd81f9684d7a9d27bd504ff01".to_string(),
-        "52c346e97b9847178eaccd11341cc8a1266ba83f78c60fef282cd7b951c3ab4f".to_string(),
-    ];
+    let acceptable_solutions =
+        ["e66414f0d4dca7df235b9e2cf4855f0cf64b9d4164412fd03c8670621bd398ff".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
 }
 
 #[test]
 fn test_04_generate_revocation_pubkey() {
-    let countersignatory_basepoint = pubkey_from_private_key(&[0x01; 32]);
-    let per_commitment_point = pubkey_from_private_key(&[0x02; 32]);
+    let countersignatory_basepoint = secp256k1pubkey_from_private_key(&[0x01; 32]);
+    let per_commitment_point = secp256k1pubkey_from_private_key(&[0x02; 32]);
 
     let revocation_pubkey =
         generate_revocation_pubkey(countersignatory_basepoint, per_commitment_point);
@@ -123,7 +117,7 @@ fn test_04_generate_revocation_pubkey() {
     let key_bytes = hex::decode(key_str).expect("Invalid hex string");
     let key = SecretKey::from_slice(&key_bytes).expect("Invalid 32-byte private key");
     let secp = Secp256k1::new();
-    let derived_pubkey = PublicKey::from_secret_key(&secp, &key);
+    let derived_pubkey = secp256k1PublicKey::from_secret_key(&secp, &key);
 
     let actual = revocation_pubkey.to_string();
 
@@ -193,8 +187,8 @@ fn test_07_build_commitment_transaction() {
     let remote_pubkey = pubkey_from_private_key(&[0x03; 32]);
 
     let to_self_delay: i64 = 144;
-    let alice_amount: u64 = 100000;
-    let bob_amount: u64 = 100000;
+    let alice_amount: u64 = 3_998_500;
+    let bob_amount: u64 = 1_000_500;
 
     let transaction = build_commitment_transaction(
         txin,
@@ -211,7 +205,7 @@ fn test_07_build_commitment_transaction() {
     println!("their solution: {}", their_solution);
 
     let acceptable_solutions =
-        ["e0da6b5c753ab8a22a65b6f9bcc0460f2724f244121f62ddc05c35dbf42719cd".to_string()];
+        ["83aef4d9008ac14c71967a7944f2f0b8bcb30ef58ae2946e0c550de6bb908cba".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
 }
@@ -240,9 +234,9 @@ fn test_08_build_htlc_commitment_transaction() {
 
     let to_self_delay: i64 = 144;
     let payment_hash160 = HASH160_DUMMY;
-    let htlc_amount: u64 = 100000;
-    let local_amount: u64 = 100000;
-    let remote_amount: u64 = 100000;
+    let htlc_amount: u64 = 405_000;
+    let local_amount: u64 = 3_593_500;
+    let remote_amount: u64 = 1_000_500;
 
     let transaction = build_htlc_commitment_transaction(
         txin,
@@ -263,7 +257,7 @@ fn test_08_build_htlc_commitment_transaction() {
     println!("their solution: {}", their_solution);
 
     let acceptable_solutions =
-        ["d8509e0413e1d72f7ff35201a4b62308dfca839613568b62c0274ba721a2da3b".to_string()];
+        ["cecd7f4c7bebfddbdd563fd96bab55a1d5d72b672518104aaa68e9bbf99a4acb".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
 }
@@ -292,7 +286,7 @@ fn test_09_build_htlc_timeout_transaction() {
 
     let contest_delay: i64 = 144;
     let cltv_expiry: u32 = 300;
-    let htlc_amount: u64 = 100000;
+    let htlc_amount: u64 = 404_000;
 
     let transaction = build_htlc_timeout_transaction(
         txin,
@@ -308,7 +302,7 @@ fn test_09_build_htlc_timeout_transaction() {
     println!("their solution: {}", their_solution);
 
     let acceptable_solutions =
-        ["f590bc5b3b48fd28e0c8f79dd2cad685dc2c0034cb12ebfaa9c933ffbe433fb7".to_string()];
+        ["5899cdd0e418b516afa2552611aad22f974ac17e9892f5828e2e55f18b2d7899".to_string()];
 
     assert!(acceptable_solutions.contains(&their_solution));
 }

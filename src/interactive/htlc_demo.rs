@@ -1,7 +1,6 @@
 #![allow(dead_code, unused_variables,unused_imports, unused_must_use)]
 use crate::internal;
 use crate::exercises;
-use internal::builder::Builder;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::blockdata::script::ScriptBuf;
@@ -10,6 +9,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::locktime::absolute::LockTime;
 use bitcoin::transaction::Version;
 use bitcoin::{ TxIn,};
+use bitcoin::PublicKey;
 use exercises::solutions::{to_local};
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
@@ -19,8 +19,9 @@ use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_sc
 use internal::sign_utils::{sign_raw_transaction, sign_funding_transaction};
 use std::time::Duration;
 use tokio::time::sleep;
-use bitcoin::secp256k1::PublicKey;
+use bitcoin::secp256k1::PublicKey as secp256k1PublicKey;
 use bitcoin::hashes::ripemd160::Hash as Ripemd160;
+use bitcoin::script::{Builder};
 
 pub async fn build_funding_tx(bitcoind: BitcoindClient,
                                         tx_input: TxIn,
@@ -61,7 +62,7 @@ pub async fn build_funding_tx(bitcoind: BitcoindClient,
     let version = Version::TWO;
     let locktime = LockTime::ZERO;
 
-    let tx = build_transaction(version, locktime, vec![tx_input], vec![local_output, remote_output, htlc_output]);
+    let tx = build_transaction(version, locktime, vec![tx_input], vec![htlc_output, remote_output, local_output]);
 
     let signed_tx = sign_raw_transaction(bitcoind.clone(), tx).await;
 

@@ -2,14 +2,14 @@
 use crate::internal;
 use crate::exercises;
 use bitcoin::consensus::encode::serialize_hex;
-use bitcoin::secp256k1::{PublicKey, SecretKey};
+use bitcoin::secp256k1::{PublicKey as secp256k1PublicKey, SecretKey};
 use exercises::exercises::{build_htlc_timeout_transaction,
 };
 use bitcoin::sighash::EcdsaSighashType;
-use bitcoin::PublicKey as BitcoinPubKey;
+use bitcoin::PublicKey;
 use internal::bitcoind_client::{BitcoindClient, get_bitcoind_client};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys,
-      pubkey_from_private_key, secp256k1_private_key, bitcoin_pubkey_from_private_key};
+      pubkey_from_private_key, secp256k1_private_key};
 use internal::tx_utils::{build_output,get_unspent_output, build_transaction, get_funding_input, get_htlc_funding_input};
 use internal::script_utils::{build_htlc_offerer_witness_script, p2wpkh_output_script};
 use internal::sign_utils::{sign_raw_transaction, sign_funding_transaction, generate_p2wsh_signature};
@@ -28,7 +28,7 @@ pub struct KeyManager{
     pub htlc_pubkey: PublicKey,
     pub htlc_private_key: SecretKey,
     pub delayed_pubkey: PublicKey,
-    pub pubkey: BitcoinPubKey,
+    pub pubkey: PublicKey,
     pub revocation_pubkey: PublicKey,
 }
 
@@ -37,14 +37,14 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
                                         our_key_manager: KeyManager,
                                         counterparty_key_manager: KeyManager) {
 
-    let txid_index = 2;
+    let txid_index = 0;
     let funding_txin = get_htlc_funding_input(txid.to_string(), txid_index);
-    let funding_amount = 400_000;
+    let funding_amount = 405_000;
 
     let payment_hash160 = HASH160_DUMMY;
     let to_self_delay: i64 = 144;
     let cltv_expiry: u32 = 300;
-    let htlc_amount = 400_000;
+    let htlc_amount = 404_000;
 
 
     let tx = build_htlc_timeout_transaction(
@@ -88,7 +88,7 @@ pub async fn create_broadcast_funding_tx(bitcoind: BitcoindClient,
     counterparty_signature_der.push(EcdsaSighashType::All as u8);
 
     // Determine signature order based on pubkey comparison
-    let our_sig_first = our_key_manager.funding_public_key.serialize()[..] > counterparty_key_manager.funding_public_key.serialize()[..];
+    let our_sig_first = our_key_manager.funding_public_key.inner.serialize()[..] > counterparty_key_manager.funding_public_key.inner.serialize()[..];
 
     // Add the signature and public key to the witness
     let mut signed_tx = tx.clone();
@@ -130,7 +130,7 @@ pub async fn run(htlc_txid: String) {
     let local_htlc_private_key = secp256k1_private_key(&[0x11; 32]);
     let revocation_pubkey = pubkey_from_private_key(&[0x12; 32]);
     let to_local_delayed_pubkey = pubkey_from_private_key(&[0x13; 32]);
-    let local_pubkey = bitcoin_pubkey_from_private_key(&[0x14; 32]);
+    let local_pubkey = pubkey_from_private_key(&[0x14; 32]);
 
     let our_key_manager = KeyManager{
             funding_private_key: our_funding_private_key,
@@ -147,7 +147,7 @@ pub async fn run(htlc_txid: String) {
     let counterparty_funding_public_key = pubkey_from_private_key(&[0x02; 32]);
     let counterparty_htlc_pubkey = pubkey_from_private_key(&[0x21; 32]);
     let counterparty_htlc_private_key = secp256k1_private_key(&[0x21; 32]);
-    let counterparty_pubkey = bitcoin_pubkey_from_private_key(&[0x22; 32]);
+    let counterparty_pubkey = pubkey_from_private_key(&[0x22; 32]);
     let counterparty_delayed_key = pubkey_from_private_key(&[0x23; 32]);
     let counterparty_revocation_key = pubkey_from_private_key(&[0x24; 32]);
 

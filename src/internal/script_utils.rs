@@ -7,14 +7,13 @@ use bitcoin::hashes::Hash;
 use bitcoin::hashes::HashEngine;
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
-use bitcoin::PublicKey as BitcoinPublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey as secp256k1PublicKey, Scalar};
+use bitcoin::PublicKey;
 use bitcoin::script::{ScriptBuf};
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::amount::Amount;
 use bitcoin::transaction::Version;
 use bitcoin::locktime::absolute::LockTime;
-use internal::builder::Builder;
 use bitcoin::blockdata::opcodes::all as opcodes;
 use bitcoin::{PubkeyHash};
 use bitcoin::{Network};
@@ -28,10 +27,10 @@ use bitcoin::secp256k1::Message;
 use bitcoin::sighash::EcdsaSighashType;
 use bitcoin::sighash::SighashCache;
 use exercises::exercises::{ two_of_two_multisig_witness_script};
+use bitcoin::script::{Builder};
 
 pub fn p2wpkh_output_script(public_key: PublicKey) -> ScriptBuf {
-    let pubkey = BitcoinPublicKey::new(public_key);
-    ScriptBuf::new_p2wpkh(&pubkey.wpubkey_hash().unwrap())
+    ScriptBuf::new_p2wpkh(&public_key.wpubkey_hash().unwrap())
 }
 
 pub fn build_htlc_offerer_witness_script(
@@ -43,12 +42,12 @@ pub fn build_htlc_offerer_witness_script(
     Builder::new()
         .push_opcode(opcodes::OP_DUP)
         .push_opcode(opcodes::OP_HASH160)
-        .push_slice(&PubkeyHash::hash(&revocation_pubkey.serialize()))
+        .push_slice(revocation_pubkey.pubkey_hash())
         .push_opcode(opcodes::OP_EQUAL)
         .push_opcode(opcodes::OP_IF)
         .push_opcode(opcodes::OP_CHECKSIG)
         .push_opcode(opcodes::OP_ELSE)
-        .push_slice(&remote_htlc_pubkey.serialize())
+        .push_key(&remote_htlc_pubkey)
         .push_opcode(opcodes::OP_SWAP)
         .push_opcode(opcodes::OP_SIZE)
         .push_int(32)
@@ -57,7 +56,7 @@ pub fn build_htlc_offerer_witness_script(
         .push_opcode(opcodes::OP_DROP)
         .push_int(2)
         .push_opcode(opcodes::OP_SWAP)
-        .push_slice(&local_htlc_pubkey.serialize())
+        .push_key(&local_htlc_pubkey)
         .push_int(2)
         .push_opcode(opcodes::OP_CHECKMULTISIG)
         .push_opcode(opcodes::OP_ELSE)
