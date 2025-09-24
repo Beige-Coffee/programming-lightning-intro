@@ -1,4 +1,10 @@
-#![allow(dead_code, unused_imports, unused_variables, unused_must_use, non_snake_case)]
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_variables,
+    unused_must_use,
+    non_snake_case
+)]
 use crate::internal;
 use bitcoin::script::{Builder, ScriptBuf, ScriptHash};
 use internal::key_utils::{add_pubkeys, pubkey_multipication_tweak, pubkey_from_secret, add_privkeys, privkey_multipication_tweak, hash_pubkeys};
@@ -83,7 +89,7 @@ pub fn build_refund_transaction(
     let tx = build_transaction(version,
                       locktime,
                       vec![funding_txin],
-                      vec![alice_output, bob_output]);
+                      vec![bob_output, alice_output]);
     tx
 }
 
@@ -184,7 +190,7 @@ pub fn build_commitment_transaction(
     let tx = build_transaction(version,
                       locktime,
                       vec![funding_txin],
-                      vec![local_output, remote_output]);
+                      vec![remote_output, local_output]);
     tx
 }
 
@@ -229,7 +235,7 @@ pub fn build_htlc_commitment_transaction(
     let tx = build_transaction(version,
                                locktime,
                                vec![funding_txin],
-                            vec![local_output, remote_output, htlc_output]);
+                            vec![htlc_output, remote_output, local_output]);
 
     tx
 }
@@ -265,7 +271,3 @@ pub fn build_htlc_timeout_transaction(
 
     tx
 }
-
-
-
-

@@ -7,8 +7,8 @@ use bitcoin::hashes::Hash;
 use bitcoin::hashes::HashEngine;
 use bitcoin::secp256k1;
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
-use bitcoin::PublicKey as BitcoinPublicKey;
+use bitcoin::secp256k1::{SecretKey, PublicKey as secp256k1PublicKey, Scalar};
+use bitcoin::PublicKey;
 use bitcoin::script::{ScriptBuf};
 use bitcoin::{OutPoint, Sequence, Transaction, TxIn, TxOut, Witness};
 use bitcoin::amount::Amount;
@@ -200,7 +200,7 @@ pub async fn sign_raw_transaction(bitcoind: BitcoindClient,
 }
 
 
-pub fn pubkey_multipication_tweak(pubkey1: PublicKey, sha_bytes: [u8; 32]) -> PublicKey {
+pub fn pubkey_multipication_tweak(pubkey1: secp256k1PublicKey, sha_bytes: [u8; 32]) -> secp256k1PublicKey {
     let secp = Secp256k1::new();
     pubkey1.mul_tweak(&secp, &Scalar::from_be_bytes(sha_bytes).unwrap()).unwrap()
 }
@@ -209,7 +209,7 @@ pub fn privkey_multipication_tweak(secret: SecretKey, sha_bytes: [u8; 32]) -> Se
     secret.mul_tweak(&Scalar::from_be_bytes(sha_bytes).unwrap()).unwrap()
 }
 
-pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
+pub fn hash_pubkeys(key1: secp256k1PublicKey, key2: secp256k1PublicKey) -> [u8; 32] {
     let mut sha = Sha256::engine();
 
     sha.input(&key1.serialize());
@@ -218,7 +218,7 @@ pub fn hash_pubkeys(key1: PublicKey, key2: PublicKey) -> [u8; 32] {
     Sha256::from_engine(sha).to_byte_array()
 }
 
-pub fn add_pubkeys(key1: PublicKey, key2: PublicKey) -> PublicKey {
+pub fn add_pubkeys(key1: secp256k1PublicKey, key2: secp256k1PublicKey) -> secp256k1PublicKey {
     let pk = key1.combine(&key2).unwrap();
 
     pk
@@ -235,28 +235,23 @@ pub fn secp256k1_private_key(private_key_bytes: &[u8; 32]) -> secp256k1::SecretK
     secret_key
 }
 
-pub fn pubkey_from_secret(secret: SecretKey) -> PublicKey {
+pub fn pubkey_from_secret(secret: SecretKey) -> secp256k1PublicKey {
     let secp = Secp256k1::new();
-    secp256k1::PublicKey::from_secret_key(&secp, &secret)
+    secp256k1::secp256k1PublicKey::from_secret_key(&secp, &secret)
 }
 
-pub fn pubkey_from_private_key(private_key: &[u8; 32]) -> PublicKey {
+pub fn pubkey_from_private_key(private_key: &[u8; 32]) -> secp256k1PublicKey {
     let secp = Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(private_key).unwrap();
-    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+    let public_key = secp256k1::secp256k1PublicKey::from_secret_key(&secp, &secret_key);
     public_key
 }
 
 pub fn bitcoin_pubkey_from_private_key(private_key: &[u8; 32]) -> BitcoinPublicKey {
     let secp = Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(private_key).unwrap();
-    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+    let public_key = secp256k1::secp256k1PublicKey::from_secret_key(&secp, &secret_key);
     BitcoinPublicKey::new(public_key)
-}
-
-pub fn p2wpkh_output_script(public_key: PublicKey) -> ScriptBuf {
-    let pubkey = BitcoinPublicKey::new(public_key);
-    ScriptBuf::new_p2wpkh(&pubkey.wpubkey_hash().unwrap())
 }
 
 pub fn build_output(amount: u64, output_script: ScriptBuf) -> TxOut {
